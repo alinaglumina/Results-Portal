@@ -16,7 +16,7 @@ export default function ResultSearch() {
     setResult(null);
 
     try {
-      const response = await fetch(`http://localhost:5000/api/results/${rollNumber.trim()}`);
+      const response = await fetch(`${API_BASE_URL}/api/results/${rollNumber.trim()}`);
       const data = await response.json();
 
       if (!response.ok) {
