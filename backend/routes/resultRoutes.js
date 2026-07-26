@@ -25,7 +25,7 @@ router.get('/titles', async (req, res) => {
   }
 });
 
-// GET /api/results/summary - Grouped by Exam Title with Student Count (Admin Panel)
+// GET /api/results/summary - Grouped by Exam Title with Student Count
 router.get('/summary', verifyAdmin, async (req, res) => {
   try {
     const summary = await Result.aggregate([
@@ -56,7 +56,7 @@ router.get('/:rollNumber', async (req, res) => {
   }
 });
 
-// POST /api/results/bulk - Bulk Upload / Update with Title (Upsert)
+// POST /api/results/bulk - Bulk Upload / Update / Recounting & CV Smart Merge
 router.post('/bulk', verifyAdmin, async (req, res) => {
   try {
     const { title, studentResults } = req.body;
@@ -65,25 +65,51 @@ router.post('/bulk', verifyAdmin, async (req, res) => {
       return res.status(400).json({ message: 'Exam Title and Student Results are required.' });
     }
 
-    const operations = studentResults.map((student) => ({
-      updateOne: {
-        filter: { rollNumber: student.rollNumber.toUpperCase(), title: title },
-        update: {
-          $set: {
-            title: title,
-            rollNumber: student.rollNumber.toUpperCase(),
-            studentName: student.studentName,
-            subjects: student.subjects
-          }
-        },
-        upsert: true
-      }
-    }));
+    for (const student of studentResults) {
+      const roll = student.rollNumber.toUpperCase();
+      
+      // Look for existing record for this student under the exact same Exam Title
+      let existingDoc = await Result.findOne({ rollNumber: roll, title: title });
 
-    await Result.bulkWrite(operations);
-    res.status(200).json({ message: `Successfully published/updated results for ${studentResults.length} students!` });
+      if (existingDoc) {
+        // Update student name if valid name is provided
+        if (student.studentName && student.studentName !== '-') {
+          existingDoc.studentName = student.studentName;
+        }
+
+        // Smart-merge incoming subjects into existing subjects list
+        student.subjects.forEach((newSub) => {
+          const subIdx = existingDoc.subjects.findIndex(
+            (s) => s.subjectCode.toUpperCase() === newSub.subjectCode.toUpperCase()
+          );
+
+          if (subIdx !== -1) {
+            // Update subject marks (RC / CV / RV mark changes)
+            existingDoc.subjects[subIdx] = {
+              ...existingDoc.subjects[subIdx].toObject(),
+              ...newSub
+            };
+          } else {
+            // Append new subject to existing list
+            existingDoc.subjects.push(newSub);
+          }
+        });
+
+        await existingDoc.save();
+      } else {
+        // Create new record if student didn't exist before
+        await Result.create({
+          title,
+          rollNumber: roll,
+          studentName: student.studentName,
+          subjects: student.subjects
+        });
+      }
+    }
+
+    res.status(200).json({ message: `Successfully processed & merged results for ${studentResults.length} student records!` });
   } catch (error) {
-    res.status(500).json({ message: 'Error publishing results', error: error.message });
+    res.status(500).json({ message: 'Error processing results', error: error.message });
   }
 });
 
