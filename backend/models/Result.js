@@ -1,20 +1,22 @@
 import mongoose from 'mongoose';
 
 const subjectSchema = new mongoose.Schema({
+  subjectCode: { type: String, required: true },
   subjectName: { type: String, required: true },
-  marksObtained: { type: Number, required: true },
-  maxMarks: { type: Number, required: true, default: 100 }
+  internalMarks: { type: String, default: '-' },
+  externalMarks: { type: String, default: '-' },
+  totalMarks: { type: String, required: true },
+  result: { type: String, required: true } // 'P' (Pass) or 'F' (Fail)
 });
 
 const resultSchema = new mongoose.Schema({
-  rollNumber: { type: String, required: true, unique: true, index: true },
+  title: { type: String, required: true }, // e.g. "B.Tech III Year I Sem Regular Results Nov 2025"
+  rollNumber: { type: String, required: true, index: true },
   studentName: { type: String, required: true },
-  course: { type: String, required: true },
-  semester: { type: String, required: true },
-  academicYear: { type: String, required: true },
-  subjects: [subjectSchema],
-  cgpa: { type: Number, required: true },
-  status: { type: String, enum: ['PASS', 'FAIL'], default: 'PASS' }
+  subjects: [subjectSchema]
 }, { timestamps: true });
+
+// Ensures updating works seamlessly for the same student and title
+resultSchema.index({ rollNumber: 1, title: 1 }, { unique: true });
 
 export default mongoose.model('Result', resultSchema);
