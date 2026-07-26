@@ -15,6 +15,16 @@ router.post('/admin/login', (req, res) => {
   res.status(401).json({ message: 'Invalid credentials' });
 });
 
+// GET /api/results/titles - Get distinct published examination titles (MUST BE BEFORE /:rollNumber)
+router.get('/titles', async (req, res) => {
+  try {
+    const titles = await Result.distinct('title');
+    res.json(titles);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching exam titles' });
+  }
+});
+
 // GET /api/results/:rollNumber - Fetch student results
 router.get('/:rollNumber', async (req, res) => {
   try {
@@ -47,7 +57,6 @@ router.post('/bulk', verifyAdmin, async (req, res) => {
       return res.status(400).json({ message: 'Exam Title and Student Results are required.' });
     }
 
-    // Bulk write operation (Upsert: update if exists, insert if new)
     const operations = studentResults.map((student) => ({
       updateOne: {
         filter: { rollNumber: student.rollNumber.toUpperCase(), title: title },
