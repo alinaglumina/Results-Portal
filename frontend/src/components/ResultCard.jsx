@@ -17,7 +17,7 @@ export default function ResultCard({ results }) {
             boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' 
           }}
         >
-          {/* JNTUA Official Header */}
+          {/* Header */}
           <div style={{ textAlign: 'center', marginBottom: '24px' }}>
             <img src="/logo.png" alt="JNTUA Logo" style={{ height: '75px', marginBottom: '8px' }} />
             <h2 style={{ margin: 0, color: '#0f172a', fontSize: '1.2rem', fontWeight: 'bold' }}>
@@ -31,7 +31,7 @@ export default function ResultCard({ results }) {
             </h3>
           </div>
 
-          {/* Roll No & Student Name Banner */}
+          {/* Roll No & Student Name */}
           <div style={{ display: 'flex', justifyContent: 'space-between', background: '#f8fafc', padding: '12px 18px', borderRadius: '6px', marginBottom: '20px', border: '1px solid #e2e8f0' }}>
             <span style={{ fontSize: '1.05em', color: '#0f172a' }}>
               <strong>Roll No:</strong> {res.rollNumber}
@@ -41,7 +41,7 @@ export default function ResultCard({ results }) {
             </span>
           </div>
 
-          {/* Subjects Table */}
+          {/* Subjects Table with Credits */}
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center' }}>
             <thead>
               <tr style={{ background: '#f1f5f9', color: '#334155' }}>
@@ -51,6 +51,7 @@ export default function ResultCard({ results }) {
                 <th style={{ padding: '10px', border: '1px solid #cbd5e1' }}>External Marks</th>
                 <th style={{ padding: '10px', border: '1px solid #cbd5e1' }}>Total</th>
                 <th style={{ padding: '10px', border: '1px solid #cbd5e1' }}>Result</th>
+                <th style={{ padding: '10px', border: '1px solid #cbd5e1' }}>Credits</th>
               </tr>
             </thead>
             <tbody>
@@ -68,6 +69,9 @@ export default function ResultCard({ results }) {
                     color: sub.result === 'P' || sub.result === 'PASS' ? '#16a34a' : '#dc2626' 
                   }}>
                     {sub.result}
+                  </td>
+                  <td style={{ padding: '10px', border: '1px solid #cbd5e1', fontWeight: 'bold' }}>
+                    {sub.credits || '-'}
                   </td>
                 </tr>
               ))}
