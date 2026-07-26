@@ -44,7 +44,7 @@ export default function AdminDashboard() {
     }
   };
 
-  // Read Excel / CSV File
+ // Read Excel / CSV File with flexible column mapping
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -57,13 +57,32 @@ export default function AdminDashboard() {
       const ws = wb.Sheets[wsname];
       const data = XLSX.utils.sheet_to_json(ws);
 
+      // Helper function to match keys flexibly regardless of spaces or casing
+      const getVal = (row, ...possibleKeys) => {
+        const rowKeys = Object.keys(row);
+        for (const pKey of possibleKeys) {
+          const foundKey = rowKeys.find(
+            (k) => k.trim().toLowerCase() === pKey.trim().toLowerCase()
+          );
+          if (
+            foundKey &&
+            row[foundKey] !== undefined &&
+            row[foundKey] !== null &&
+            String(row[foundKey]).trim() !== ''
+          ) {
+            return String(row[foundKey]).trim();
+          }
+        }
+        return '-';
+      };
+
       // Group rows by Roll No
       const grouped = {};
       data.forEach((row) => {
-        const roll = String(row['Roll No'] || row['rollNumber'] || '').trim();
-        const name = String(row['Student Name'] || row['studentName'] || '').trim();
+        const roll = getVal(row, 'Roll No', 'Roll Number', 'rollNumber', 'ROLL_NO', 'HTNO', 'Hall Ticket No').toUpperCase();
+        const name = getVal(row, 'Student Name', 'Name', 'studentName', 'NAME', 'STUDENT_NAME');
 
-        if (!roll) return;
+        if (roll === '-') return;
 
         if (!grouped[roll]) {
           grouped[roll] = {
@@ -74,12 +93,12 @@ export default function AdminDashboard() {
         }
 
         grouped[roll].subjects.push({
-          subjectCode: String(row['Subject Code'] || row['subjectCode'] || '-'),
-          subjectName: String(row['Subject Name'] || row['subjectName'] || '-'),
-          internalMarks: String(row['Internal'] || row['internalMarks'] || '-'),
-          externalMarks: String(row['External'] || row['externalMarks'] || '-'),
-          totalMarks: String(row['Total'] || row['totalMarks'] || '-'),
-          result: String(row['Result'] || row['result'] || 'P')
+          subjectCode: getVal(row, 'Subject Code', 'Sub Code', 'subjectCode', 'SUB_CODE', 'CODE'),
+          subjectName: getVal(row, 'Subject Name', 'Sub Name', 'subjectName', 'SUB_NAME', 'SUBJECT'),
+          internalMarks: getVal(row, 'Internal Marks', 'Internal', 'internalMarks', 'INT', 'INT MARKS', 'IM', 'INTERNAL_MARKS'),
+          externalMarks: getVal(row, 'External Marks', 'External', 'externalMarks', 'EXT', 'EXT MARKS', 'EM', 'EXTERNAL_MARKS'),
+          totalMarks: getVal(row, 'Total', 'Total Marks', 'totalMarks', 'TOT', 'MARKS', 'TOTAL_MARKS'),
+          result: getVal(row, 'Result', 'result', 'STATUS', 'RES')
         });
       });
 
