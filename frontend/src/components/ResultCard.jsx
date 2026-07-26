@@ -1,14 +1,15 @@
 import React from 'react';
 import html2pdf from 'html2pdf.js';
 
-export default function ResultCard({ results }) {
+export default function ResultCard({ results, isAdmin = false }) {
   if (!results || results.length === 0) return null;
 
-  // Handler to export the selected memo as a PDF
-  const handleDownloadPDF = (index, rollNumber, examTitle) => {
+  // Check if admin is logged in
+  const isLoggedAdmin = isAdmin || Boolean(localStorage.getItem('adminToken'));
+
+  const handleDownloadPDF = (index, rollNumber) => {
     const element = document.getElementById(`marks-memo-${index}`);
     
-    // PDF configuration options
     const opt = {
       margin: [8, 8, 8, 8],
       filename: `JNTUA_Marks_Memo_${rollNumber}.pdf`,
@@ -23,7 +24,6 @@ export default function ResultCard({ results }) {
   return (
     <div style={{ marginTop: '30px' }}>
       {results.map((res, index) => {
-        // Calculate total credits & pass/fail status
         const totalCreditsObtained = res.subjects.reduce((sum, sub) => {
           const c = parseFloat(sub.credits);
           return !isNaN(c) && (sub.result === 'P' || sub.result === 'PASS') ? sum + c : sum;
@@ -36,23 +36,27 @@ export default function ResultCard({ results }) {
         return (
           <div key={index} style={{ marginBottom: '40px' }}>
             
-            {/* ACTION BUTTONS (Hidden in PDF export) */}
+            {/* ACTION BUTTONS */}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginBottom: '12px' }}>
               <button 
                 onClick={() => window.print()} 
                 style={{ padding: '9px 16px', background: '#475569', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }}
               >
-                🖨️ Print
+                🖨️ Print Result
               </button>
-              <button 
-                onClick={() => handleDownloadPDF(index, res.rollNumber, res.title)} 
-                style={{ padding: '9px 18px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }}
-              >
-                📥 Download PDF Memo
-              </button>
+
+              {/* PDF MEMO DOWNLOAD BUTTON - STRICTLY FOR ADMIN */}
+              {isLoggedAdmin && (
+                <button 
+                  onClick={() => handleDownloadPDF(index, res.rollNumber)} 
+                  style={{ padding: '9px 18px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }}
+                >
+                  📥 Download Official PDF Memo (Admin Only)
+                </button>
+              )}
             </div>
 
-            {/* OFFICIAL SEMESTER MARKS MEMO (Captured for PDF) */}
+            {/* MARKS MEMORANDUM DISPLAY */}
             <div 
               id={`marks-memo-${index}`}
               style={{ 
@@ -65,7 +69,7 @@ export default function ResultCard({ results }) {
                 fontFamily: 'serif'
               }}
             >
-              {/* University Header */}
+              {/* Header */}
               <div style={{ textAlign: 'center', marginBottom: '20px' }}>
                 <img src="/logo.png" alt="JNTUA Logo" style={{ height: '70px', marginBottom: '6px' }} />
                 <h2 style={{ margin: 0, color: '#0f172a', fontSize: '1.25rem', fontWeight: 'bold', letterSpacing: '0.5px' }}>
@@ -85,19 +89,19 @@ export default function ResultCard({ results }) {
                 </div>
               </div>
 
-              {/* Student Details Box */}
+              {/* Student Info */}
               <table style={{ width: '100%', marginBottom: '18px', borderCollapse: 'collapse', fontFamily: 'sans-serif', fontSize: '0.95rem' }}>
                 <tbody>
                   <tr>
-                    <td style={{ padding: '6px 0', width: '15%', fontWeight: 'bold' }}>Hall Ticket No:</td>
-                    <td style={{ padding: '6px 0', width: '35%', fontWeight: 'bold', color: '#1e293b' }}>{res.rollNumber}</td>
-                    <td style={{ padding: '6px 0', width: '15%', fontWeight: 'bold' }}>Student Name:</td>
-                    <td style={{ padding: '6px 0', width: '35%', fontWeight: 'bold', color: '#1e293b' }}>{res.studentName}</td>
+                    <td style={{ padding: '6px 0', width: '18%', fontWeight: 'bold' }}>Hall Ticket No:</td>
+                    <td style={{ padding: '6px 0', width: '32%', fontWeight: 'bold', color: '#1e293b' }}>{res.rollNumber}</td>
+                    <td style={{ padding: '6px 0', width: '18%', fontWeight: 'bold' }}>Student Name:</td>
+                    <td style={{ padding: '6px 0', width: '32%', fontWeight: 'bold', color: '#1e293b' }}>{res.studentName}</td>
                   </tr>
                 </tbody>
               </table>
 
-              {/* Marks Breakdown Table */}
+              {/* Marks Table */}
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center', fontFamily: 'sans-serif', fontSize: '0.9rem', marginBottom: '20px' }}>
                 <thead>
                   <tr style={{ background: '#f1f5f9', color: '#0f172a' }}>
@@ -134,7 +138,7 @@ export default function ResultCard({ results }) {
                 </tbody>
               </table>
 
-              {/* Memo Summary Footer */}
+              {/* Status Summary */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', border: '1px solid #0f172a', padding: '10px 16px', borderRadius: '4px', fontFamily: 'sans-serif', fontSize: '0.9rem', marginBottom: '35px' }}>
                 <div>
                   <strong>Total Credits Earned:</strong> {totalCreditsObtained}
@@ -147,7 +151,7 @@ export default function ResultCard({ results }) {
                 </div>
               </div>
 
-              {/* Official Signatures Section */}
+              {/* Signatures */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '40px', paddingTop: '20px', fontFamily: 'sans-serif', fontSize: '0.85rem' }}>
                 <div style={{ textAlign: 'center' }}>
                   <p style={{ margin: 0, fontWeight: 'bold' }}>Verified By</p>
