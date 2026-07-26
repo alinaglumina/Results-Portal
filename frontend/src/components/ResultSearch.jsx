@@ -12,7 +12,6 @@ export default function ResultSearch() {
   const [loadingSearch, setLoadingSearch] = useState(false);
   const [error, setError] = useState('');
 
-  // Fetch all published exam titles on load
   useEffect(() => {
     fetchTitles();
   }, []);
@@ -21,9 +20,7 @@ export default function ResultSearch() {
     try {
       const res = await fetch(`${API_BASE_URL}/api/results/titles`);
       const data = await res.json();
-      if (res.ok) {
-        setTitles(data);
-      }
+      if (res.ok) setTitles(data);
     } catch (err) {
       console.error('Failed to load titles', err);
     } finally {
@@ -47,7 +44,6 @@ export default function ResultSearch() {
         throw new Error(data.message || 'No result found for this Roll Number.');
       }
 
-      // Filter results to match the selected exam title
       const filtered = data.filter((item) => item.title === selectedTitle);
 
       if (filtered.length === 0) {
@@ -70,12 +66,12 @@ export default function ResultSearch() {
   };
 
   return (
-    <div style={{ maxWidth: '850px', margin: '0 auto', fontFamily: 'sans-serif' }}>
+    <div style={{ maxWidth: '900px', margin: '0 auto', fontFamily: 'sans-serif' }}>
       
-      {/* STEP 1: DISPLAY EXAM TITLES FIRST */}
+      {/* STEP 1: 2-COLUMN EXAMINATION TITLES TABLE */}
       {!selectedTitle ? (
         <div>
-          <h2 style={{ color: '#1e293b', borderBottom: '2px solid #cbd5e1', paddingBottom: '10px', marginBottom: '20px' }}>
+          <h2 style={{ color: '#1e293b', borderBottom: '2px solid #cbd5e1', paddingBottom: '12px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
             📋 Select Examination Result
           </h2>
 
@@ -86,42 +82,39 @@ export default function ResultSearch() {
               <p style={{ margin: 0, color: '#64748b' }}>No examination results have been published yet.</p>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {titles.map((title, index) => (
-                <div
-                  key={index}
-                  onClick={() => setSelectedTitle(title)}
-                  style={{
-                    padding: '16px 20px',
-                    border: '1px solid #cbd5e1',
-                    borderRadius: '8px',
-                    background: '#ffffff',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    display: 'flex',
-                    justify: 'space-between',
-                    alignItems: 'center',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-                  }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.borderColor = '#2563eb';
-                    e.currentTarget.style.background = '#f0f6ff';
-                  }}
-                  onMouseOut={(e) => {
-                    e.currentTarget.style.borderColor = '#cbd5e1';
-                    e.currentTarget.style.background = '#ffffff';
-                  }}
-                >
-                  <span style={{ fontWeight: '600', fontSize: '1.05em', color: '#0f172a' }}>{title}</span>
-                  <span style={{ color: '#2563eb', fontWeight: 'bold' }}>View Result →</span>
-                </div>
-              ))}
+            <div style={{ border: '1px solid #cbd5e1', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', background: '#ffffff' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ background: '#f1f5f9', color: '#334155' }}>
+                    <th style={{ padding: '14px 20px', borderBottom: '2px solid #cbd5e1', fontSize: '1rem' }}>Title</th>
+                    <th style={{ padding: '14px 20px', borderBottom: '2px solid #cbd5e1', textAlign: 'right', width: '180px', fontSize: '1rem' }}>View Result</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {titles.map((title, index) => (
+                    <tr 
+                      key={index}
+                      onClick={() => setSelectedTitle(title)}
+                      style={{ borderBottom: '1px solid #e2e8f0', cursor: 'pointer', transition: 'background 0.2s ease' }}
+                      onMouseOver={(e) => e.currentTarget.style.background = '#f0f6ff'}
+                      onMouseOut={(e) => e.currentTarget.style.background = '#ffffff'}
+                    >
+                      <td style={{ padding: '14px 20px', fontWeight: '600', color: '#0f172a', fontSize: '1rem' }}>{title}</td>
+                      <td style={{ padding: '14px 20px', textAlign: 'right' }}>
+                        <button style={{ padding: '8px 16px', background: '#2563eb', color: '#ffffff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '0.88rem' }}>
+                          View Result →
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
       ) : (
         
-        /* STEP 2: SEARCH BAR APPEARS AFTER CLICKING A TITLE */
+        /* STEP 2: SEARCH FORM AFTER SELECTING A TITLE */
         <div>
           <button
             onClick={handleBackToTitles}
@@ -130,15 +123,15 @@ export default function ResultSearch() {
             ← Back to All Examinations
           </button>
 
-          <div style={{ background: '#334155', color: '#fff', padding: '16px 20px', borderRadius: '8px', marginBottom: '24px' }}>
-            <span style={{ fontSize: '0.85em', textTransform: 'uppercase', tracking: '1px', opacity: 0.8 }}>Selected Examination</span>
+          <div style={{ background: '#1e293b', color: '#fff', padding: '16px 20px', borderRadius: '8px', marginBottom: '24px' }}>
+            <span style={{ fontSize: '0.8em', textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.8 }}>Selected Examination</span>
             <h3 style={{ margin: '4px 0 0 0' }}>{selectedTitle}</h3>
           </div>
 
           <form onSubmit={handleSearch} style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
             <input
               type="text"
-              placeholder="Enter Student Roll Number (e.g., 2026CS01)"
+              placeholder="Enter Student Roll Number (e.g., 182G1D2001)"
               value={rollNumber}
               onChange={(e) => setRollNumber(e.target.value)}
               style={{ flex: 1, padding: '12px 16px', fontSize: '16px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
@@ -158,7 +151,6 @@ export default function ResultSearch() {
             </div>
           )}
 
-          {/* Render Result Card */}
           <ResultCard results={results} />
         </div>
       )}
