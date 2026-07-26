@@ -44,7 +44,7 @@ export default function AdminDashboard() {
     }
   };
 
- // Read Excel / CSV File with flexible column mapping
+ // Ultra-flexible Excel / CSV Reader
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -57,20 +57,20 @@ export default function AdminDashboard() {
       const ws = wb.Sheets[wsname];
       const data = XLSX.utils.sheet_to_json(ws);
 
-      // Helper function to match keys flexibly regardless of spaces or casing
+      // Helper to strip spaces/special characters for clean comparison
+      const cleanKey = (str) => String(str || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
       const getVal = (row, ...possibleKeys) => {
         const rowKeys = Object.keys(row);
-        for (const pKey of possibleKeys) {
-          const foundKey = rowKeys.find(
-            (k) => k.trim().toLowerCase() === pKey.trim().toLowerCase()
-          );
-          if (
-            foundKey &&
-            row[foundKey] !== undefined &&
-            row[foundKey] !== null &&
-            String(row[foundKey]).trim() !== ''
-          ) {
-            return String(row[foundKey]).trim();
+        const normalizedTargets = possibleKeys.map(cleanKey);
+
+        for (const rowKey of rowKeys) {
+          const cleanRowKey = cleanKey(rowKey);
+          if (normalizedTargets.some((target) => cleanRowKey.includes(target))) {
+            const val = row[rowKey];
+            if (val !== undefined && val !== null && String(val).trim() !== '') {
+              return String(val).trim();
+            }
           }
         }
         return '-';
@@ -79,8 +79,8 @@ export default function AdminDashboard() {
       // Group rows by Roll No
       const grouped = {};
       data.forEach((row) => {
-        const roll = getVal(row, 'Roll No', 'Roll Number', 'rollNumber', 'ROLL_NO', 'HTNO', 'Hall Ticket No').toUpperCase();
-        const name = getVal(row, 'Student Name', 'Name', 'studentName', 'NAME', 'STUDENT_NAME');
+        const roll = getVal(row, 'rollno', 'rollnumber', 'roll', 'htno', 'hallticket').toUpperCase();
+        const name = getVal(row, 'studentname', 'name', 'student');
 
         if (roll === '-') return;
 
@@ -93,12 +93,12 @@ export default function AdminDashboard() {
         }
 
         grouped[roll].subjects.push({
-          subjectCode: getVal(row, 'Subject Code', 'Sub Code', 'subjectCode', 'SUB_CODE', 'CODE'),
-          subjectName: getVal(row, 'Subject Name', 'Sub Name', 'subjectName', 'SUB_NAME', 'SUBJECT'),
-          internalMarks: getVal(row, 'Internal Marks', 'Internal', 'internalMarks', 'INT', 'INT MARKS', 'IM', 'INTERNAL_MARKS'),
-          externalMarks: getVal(row, 'External Marks', 'External', 'externalMarks', 'EXT', 'EXT MARKS', 'EM', 'EXTERNAL_MARKS'),
-          totalMarks: getVal(row, 'Total', 'Total Marks', 'totalMarks', 'TOT', 'MARKS', 'TOTAL_MARKS'),
-          result: getVal(row, 'Result', 'result', 'STATUS', 'RES')
+          subjectCode: getVal(row, 'subjectcode', 'subcode', 'code'),
+          subjectName: getVal(row, 'subjectname', 'subname', 'subject'),
+          internalMarks: getVal(row, 'internalmarks', 'internal', 'intmarks', 'int', 'im', 'mid'),
+          externalMarks: getVal(row, 'externalmarks', 'external', 'extmarks', 'ext', 'em', 'see'),
+          totalMarks: getVal(row, 'totalmarks', 'total', 'tot', 'marks'),
+          result: getVal(row, 'result', 'status', 'res')
         });
       });
 
