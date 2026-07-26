@@ -1,4 +1,3 @@
-import { API_BASE_URL } from '../config';
 import React, { useState } from 'react';
 
 export default function ResultSearch() {
@@ -16,7 +15,7 @@ export default function ResultSearch() {
     setResult(null);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/results/${rollNumber.trim()}`);
+      const response = await fetch(`https://results-portal-hvjj.onrender.com/api/results/${rollNumber.trim()}`);
       const data = await response.json();
 
       if (!response.ok) {
