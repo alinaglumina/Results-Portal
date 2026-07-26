@@ -44,6 +44,7 @@ export default function AdminDashboard() {
     }
   };
 
+  // Strict & Robust Excel Parser
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -56,19 +57,17 @@ export default function AdminDashboard() {
       const ws = wb.Sheets[wsname];
       const data = XLSX.utils.sheet_to_json(ws);
 
-      const cleanKey = (str) => String(str || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      // Clean string helper for exact comparison
+      const clean = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
+      // Strict Exact Match Key Helper
       const getVal = (row, ...possibleKeys) => {
         const rowKeys = Object.keys(row);
-        const normalizedTargets = possibleKeys.map(cleanKey);
-
-        for (const rowKey of rowKeys) {
-          const cleanRowKey = cleanKey(rowKey);
-          if (normalizedTargets.some((target) => cleanRowKey.includes(target))) {
-            const val = row[rowKey];
-            if (val !== undefined && val !== null && String(val).trim() !== '') {
-              return String(val).trim();
-            }
+        for (const pKey of possibleKeys) {
+          const targetClean = clean(pKey);
+          const matchKey = rowKeys.find((rk) => clean(rk) === targetClean);
+          if (matchKey && row[matchKey] !== undefined && row[matchKey] !== null && String(row[matchKey]).trim() !== '') {
+            return String(row[matchKey]).trim();
           }
         }
         return '-';
@@ -76,8 +75,8 @@ export default function AdminDashboard() {
 
       const grouped = {};
       data.forEach((row) => {
-        const roll = getVal(row, 'rollno', 'rollnumber', 'roll', 'htno', 'hallticket').toUpperCase();
-        const name = getVal(row, 'studentname', 'name', 'student');
+        const roll = getVal(row, 'Roll No', 'Roll Number', 'RollNo', 'HTNO', 'Hall Ticket No', 'Roll').toUpperCase();
+        const name = getVal(row, 'Student Name', 'StudentName', 'Name', 'Student');
 
         if (roll === '-') return;
 
@@ -89,14 +88,23 @@ export default function AdminDashboard() {
           };
         }
 
+        const internal = getVal(row, 'Internal Marks', 'Internal', 'Int Marks', 'Int', 'IM', 'Mid');
+        const external = getVal(row, 'External Marks', 'External', 'Ext Marks', 'Ext', 'EM', 'SEE');
+        
+        let total = getVal(row, 'Total', 'Total Marks', 'TotalMarks', 'Tot');
+        // Auto-calculate Total if missing but internal and external exist
+        if (total === '-' && !isNaN(internal) && !isNaN(external)) {
+          total = String(Number(internal) + Number(external));
+        }
+
         grouped[roll].subjects.push({
-          subjectCode: getVal(row, 'subjectcode', 'subcode', 'code'),
-          subjectName: getVal(row, 'subjectname', 'subname', 'subject'),
-          internalMarks: getVal(row, 'internalmarks', 'internal', 'intmarks', 'int', 'im', 'mid'),
-          externalMarks: getVal(row, 'externalmarks', 'external', 'extmarks', 'ext', 'em', 'see'),
-          totalMarks: getVal(row, 'totalmarks', 'total', 'tot', 'marks'),
-          result: getVal(row, 'result', 'status', 'res'),
-          credits: getVal(row, 'credits', 'credit', 'cred', 'c', 'cr') // NEW
+          subjectCode: getVal(row, 'Subject Code', 'Sub Code', 'SubjectCode', 'SubCode', 'Code'),
+          subjectName: getVal(row, 'Subject Name', 'Sub Name', 'SubjectName', 'SubName', 'Subject'),
+          internalMarks: internal,
+          externalMarks: external,
+          totalMarks: total,
+          result: getVal(row, 'Result', 'Status', 'Res', 'Grade'),
+          credits: getVal(row, 'Credits', 'Credit', 'Cred', 'Cr')
         });
       });
 
@@ -134,18 +142,15 @@ export default function AdminDashboard() {
   };
 
   const handleDeleteTitle = async (examTitle) => {
-    if (!window.confirm(`Are you sure you want to delete ALL results published under "${examTitle}"?`)) return;
-    
+    if (!window.confirm(`Delete all results for "${examTitle}"?`)) return;
     try {
       const res = await fetch(`${API_BASE_URL}/api/results/title/${encodeURIComponent(examTitle)}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
-      if (res.ok) {
-        fetchSummary();
-      }
+      if (res.ok) fetchSummary();
     } catch (err) {
-      alert('Failed to delete examination results');
+      alert('Failed to delete results');
     }
   };
 
@@ -191,11 +196,43 @@ export default function AdminDashboard() {
             <input type="file" accept=".xlsx, .xls, .csv" onChange={handleFileUpload} style={{ padding: '8px' }} />
           </div>
 
+          {/* Verification Preview */}
           {parsedData.length > 0 && (
-            <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-              <p style={{ margin: 0, color: '#16a34a', fontWeight: 'bold' }}>
-                ✓ Parsed results for {parsedData.length} students from file.
+            <div style={{ marginTop: '10px', background: '#f8fafc', padding: '16px', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
+              <p style={{ margin: '0 0 10px 0', color: '#16a34a', fontWeight: 'bold' }}>
+                ✓ Parsed {parsedData.length} students. Sample Preview:
               </p>
+              
+              <div style={{ fontSize: '0.9em', marginBottom: '8px' }}>
+                <strong>Roll No:</strong> {parsedData[0].rollNumber} | <strong>Name:</strong> {parsedData[0].studentName}
+              </div>
+
+              <table style={{ width: '100%', borderCollapse: 'collapse', background: '#fff', fontSize: '0.85em' }}>
+                <thead>
+                  <tr style={{ background: '#e2e8f0' }}>
+                    <th style={{ padding: '6px', border: '1px solid #cbd5e1' }}>Code</th>
+                    <th style={{ padding: '6px', border: '1px solid #cbd5e1' }}>Subject Name</th>
+                    <th style={{ padding: '6px', border: '1px solid #cbd5e1' }}>Int</th>
+                    <th style={{ padding: '6px', border: '1px solid #cbd5e1' }}>Ext</th>
+                    <th style={{ padding: '6px', border: '1px solid #cbd5e1' }}>Total</th>
+                    <th style={{ padding: '6px', border: '1px solid #cbd5e1' }}>Res</th>
+                    <th style={{ padding: '6px', border: '1px solid #cbd5e1' }}>Credits</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {parsedData[0].subjects.map((s, i) => (
+                    <tr key={i} style={{ textAlign: 'center' }}>
+                      <td style={{ padding: '6px', border: '1px solid #cbd5e1' }}>{s.subjectCode}</td>
+                      <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'left' }}>{s.subjectName}</td>
+                      <td style={{ padding: '6px', border: '1px solid #cbd5e1' }}>{s.internalMarks}</td>
+                      <td style={{ padding: '6px', border: '1px solid #cbd5e1' }}>{s.externalMarks}</td>
+                      <td style={{ padding: '6px', border: '1px solid #cbd5e1', fontWeight: 'bold' }}>{s.totalMarks}</td>
+                      <td style={{ padding: '6px', border: '1px solid #cbd5e1' }}>{s.result}</td>
+                      <td style={{ padding: '6px', border: '1px solid #cbd5e1' }}>{s.credits}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
 
@@ -209,7 +246,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Published Summary Table */}
+      {/* Published Summary */}
       <h3>Published Examinations ({summaryList.length})</h3>
       <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #cbd5e1', background: '#fff' }}>
         <thead>
@@ -220,30 +257,24 @@ export default function AdminDashboard() {
           </tr>
         </thead>
         <tbody>
-          {summaryList.length === 0 ? (
-            <tr>
-              <td colSpan="3" style={{ padding: '16px', textAlign: 'center', color: '#64748b' }}>No examination results published yet.</td>
+          {summaryList.map((item, index) => (
+            <tr key={index} style={{ borderBottom: '1px solid #f1f5f9' }}>
+              <td style={{ padding: '12px 16px', fontWeight: '600', color: '#0f172a' }}>{item.title}</td>
+              <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                <span style={{ background: '#e0f2fe', color: '#0369a1', padding: '4px 10px', borderRadius: '12px', fontWeight: 'bold', fontSize: '0.88rem' }}>
+                  {item.count} Students
+                </span>
+              </td>
+              <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                <button 
+                  onClick={() => handleDeleteTitle(item.title)} 
+                  style={{ color: '#ef4444', cursor: 'pointer', border: 'none', background: 'transparent', fontWeight: 'bold' }}
+                >
+                  Delete
+                </button>
+              </td>
             </tr>
-          ) : (
-            summaryList.map((item, index) => (
-              <tr key={index} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                <td style={{ padding: '12px 16px', fontWeight: '600', color: '#0f172a' }}>{item.title}</td>
-                <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                  <span style={{ background: '#e0f2fe', color: '#0369a1', padding: '4px 10px', borderRadius: '12px', fontWeight: 'bold', fontSize: '0.88rem' }}>
-                    {item.count} Students
-                  </span>
-                </td>
-                <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                  <button 
-                    onClick={() => handleDeleteTitle(item.title)} 
-                    style={{ color: '#ef4444', cursor: 'pointer', border: 'none', background: 'transparent', fontWeight: 'bold' }}
-                  >
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))
-          )}
+          ))}
         </tbody>
       </table>
     </div>
