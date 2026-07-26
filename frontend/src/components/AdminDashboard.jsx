@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
+import ResultCard from './ResultCard';
 
 const API_BASE_URL = 'https://results-portal-hvjj.onrender.com';
 
@@ -11,6 +12,11 @@ export default function AdminDashboard() {
   const [parsedData, setParsedData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Admin Memo Search Tool State
+  const [searchRoll, setSearchRoll] = useState('');
+  const [adminMemoResults, setAdminMemoResults] = useState([]);
+  const [searchError, setSearchError] = useState('');
 
   useEffect(() => {
     if (token) fetchSummary();
@@ -44,7 +50,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // Strict & Robust Excel Parser
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -57,10 +62,8 @@ export default function AdminDashboard() {
       const ws = wb.Sheets[wsname];
       const data = XLSX.utils.sheet_to_json(ws);
 
-      // Clean string helper for exact comparison
       const clean = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
-      // Strict Exact Match Key Helper
       const getVal = (row, ...possibleKeys) => {
         const rowKeys = Object.keys(row);
         for (const pKey of possibleKeys) {
@@ -92,7 +95,6 @@ export default function AdminDashboard() {
         const external = getVal(row, 'External Marks', 'External', 'Ext Marks', 'Ext', 'EM', 'SEE');
         
         let total = getVal(row, 'Total', 'Total Marks', 'TotalMarks', 'Tot');
-        // Auto-calculate Total if missing but internal and external exist
         if (total === '-' && !isNaN(internal) && !isNaN(external)) {
           total = String(Number(internal) + Number(external));
         }
@@ -154,6 +156,25 @@ export default function AdminDashboard() {
     }
   };
 
+  // Admin Search & Generate Memo Function
+  const handleAdminMemoSearch = async (e) => {
+    e.preventDefault();
+    if (!searchRoll.trim()) return;
+
+    setSearchError('');
+    setAdminMemoResults([]);
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/results/${searchRoll.trim()}`);
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.message || 'Student not found.');
+      setAdminMemoResults(data);
+    } catch (err) {
+      setSearchError(err.message);
+    }
+  };
+
   if (!token) {
     return (
       <div style={{ maxWidth: '400px', margin: '60px auto', padding: '24px', border: '1px solid #cbd5e1', borderRadius: '8px', background: '#fff' }}>
@@ -196,46 +217,6 @@ export default function AdminDashboard() {
             <input type="file" accept=".xlsx, .xls, .csv" onChange={handleFileUpload} style={{ padding: '8px' }} />
           </div>
 
-          {/* Verification Preview */}
-          {parsedData.length > 0 && (
-            <div style={{ marginTop: '10px', background: '#f8fafc', padding: '16px', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
-              <p style={{ margin: '0 0 10px 0', color: '#16a34a', fontWeight: 'bold' }}>
-                ✓ Parsed {parsedData.length} students. Sample Preview:
-              </p>
-              
-              <div style={{ fontSize: '0.9em', marginBottom: '8px' }}>
-                <strong>Roll No:</strong> {parsedData[0].rollNumber} | <strong>Name:</strong> {parsedData[0].studentName}
-              </div>
-
-              <table style={{ width: '100%', borderCollapse: 'collapse', background: '#fff', fontSize: '0.85em' }}>
-                <thead>
-                  <tr style={{ background: '#e2e8f0' }}>
-                    <th style={{ padding: '6px', border: '1px solid #cbd5e1' }}>Code</th>
-                    <th style={{ padding: '6px', border: '1px solid #cbd5e1' }}>Subject Name</th>
-                    <th style={{ padding: '6px', border: '1px solid #cbd5e1' }}>Int</th>
-                    <th style={{ padding: '6px', border: '1px solid #cbd5e1' }}>Ext</th>
-                    <th style={{ padding: '6px', border: '1px solid #cbd5e1' }}>Total</th>
-                    <th style={{ padding: '6px', border: '1px solid #cbd5e1' }}>Res</th>
-                    <th style={{ padding: '6px', border: '1px solid #cbd5e1' }}>Credits</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {parsedData[0].subjects.map((s, i) => (
-                    <tr key={i} style={{ textAlign: 'center' }}>
-                      <td style={{ padding: '6px', border: '1px solid #cbd5e1' }}>{s.subjectCode}</td>
-                      <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'left' }}>{s.subjectName}</td>
-                      <td style={{ padding: '6px', border: '1px solid #cbd5e1' }}>{s.internalMarks}</td>
-                      <td style={{ padding: '6px', border: '1px solid #cbd5e1' }}>{s.externalMarks}</td>
-                      <td style={{ padding: '6px', border: '1px solid #cbd5e1', fontWeight: 'bold' }}>{s.totalMarks}</td>
-                      <td style={{ padding: '6px', border: '1px solid #cbd5e1' }}>{s.result}</td>
-                      <td style={{ padding: '6px', border: '1px solid #cbd5e1' }}>{s.credits}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
           <button 
             onClick={handlePublish} 
             disabled={loading}
@@ -244,6 +225,32 @@ export default function AdminDashboard() {
             {loading ? 'Processing Upload...' : 'Publish / Update Results'}
           </button>
         </div>
+      </div>
+
+      {/* ADMIN MEMO GENERATOR TOOL */}
+      <div style={{ padding: '24px', border: '1px solid #93c5fd', borderRadius: '8px', background: '#eff6ff', marginBottom: '30px' }}>
+        <h3 style={{ margin: '0 0 12px 0', color: '#1e40af' }}>📄 Admin Student Marks Memo Generator</h3>
+        <p style={{ margin: '0 0 16px 0', color: '#3b82f6', fontSize: '0.9rem' }}>
+          Search any student's Hall Ticket Number to generate, preview, and download their official PDF Marks Memo.
+        </p>
+
+        <form onSubmit={handleAdminMemoSearch} style={{ display: 'flex', gap: '10px' }}>
+          <input 
+            type="text" 
+            placeholder="Enter Student Hall Ticket No (e.g. 182G1D2001)" 
+            value={searchRoll} 
+            onChange={(e) => setSearchRoll(e.target.value)} 
+            style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+          />
+          <button type="submit" style={{ padding: '10px 20px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
+            Generate Memo
+          </button>
+        </form>
+
+        {searchError && <p style={{ color: 'red', marginTop: '10px' }}>{searchError}</p>}
+
+        {/* Render Memo Result for Admin */}
+        <ResultCard results={adminMemoResults} isAdmin={true} />
       </div>
 
       {/* Published Summary */}
