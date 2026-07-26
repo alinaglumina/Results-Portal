@@ -1,4 +1,3 @@
-import { API_BASE_URL } from '../config';
 import React, { useState, useEffect } from 'react';
 
 export default function AdminDashboard() {
@@ -27,7 +26,7 @@ export default function AdminDashboard() {
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:5000/api/results/admin/login', {
+      const res = await fetch('https://results-portal-hvjj.onrender.com/api/results/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(credentials)
