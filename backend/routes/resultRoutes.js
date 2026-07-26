@@ -15,13 +15,31 @@ router.post('/admin/login', (req, res) => {
   res.status(401).json({ message: 'Invalid credentials' });
 });
 
-// GET /api/results/titles - Get distinct published examination titles (MUST BE BEFORE /:rollNumber)
+// GET /api/results/titles - Get distinct published examination titles
 router.get('/titles', async (req, res) => {
   try {
     const titles = await Result.distinct('title');
     res.json(titles);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching exam titles' });
+  }
+});
+
+// GET /api/results/summary - Grouped by Exam Title with Student Count (Admin Panel)
+router.get('/summary', verifyAdmin, async (req, res) => {
+  try {
+    const summary = await Result.aggregate([
+      {
+        $group: {
+          _id: "$title",
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+    const formatted = summary.map((s) => ({ title: s._id, count: s.count }));
+    res.json(formatted);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to fetch summary' });
   }
 });
 
@@ -35,16 +53,6 @@ router.get('/:rollNumber', async (req, res) => {
     res.json(results);
   } catch (error) {
     res.status(500).json({ message: 'Server Error', error: error.message });
-  }
-});
-
-// GET /api/results - Admin List All Results
-router.get('/', verifyAdmin, async (req, res) => {
-  try {
-    const results = await Result.find().sort({ createdAt: -1 });
-    res.json(results);
-  } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch results' });
   }
 });
 
@@ -79,13 +87,13 @@ router.post('/bulk', verifyAdmin, async (req, res) => {
   }
 });
 
-// DELETE /api/results/:id - Delete result
-router.delete('/:id', verifyAdmin, async (req, res) => {
+// DELETE /api/results/title/:title - Delete entire examination result set
+router.delete('/title/:title', verifyAdmin, async (req, res) => {
   try {
-    await Result.findByIdAndDelete(req.params.id);
-    res.json({ message: 'Result deleted successfully' });
+    await Result.deleteMany({ title: req.params.title });
+    res.json({ message: 'Examination results deleted successfully' });
   } catch (error) {
-    res.status(500).json({ message: 'Error deleting result' });
+    res.status(500).json({ message: 'Error deleting examination results' });
   }
 });
 
