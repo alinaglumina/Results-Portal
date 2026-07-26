@@ -11,28 +11,37 @@ export default function ResultCard({ results }) {
           style={{ 
             border: '1px solid #cbd5e1', 
             borderRadius: '8px', 
-            padding: '24px', 
+            padding: '28px', 
             background: '#ffffff', 
             marginBottom: '30px', 
             boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' 
           }}
         >
-          {/* Exam Title Header */}
-          <h3 style={{ textAlign: 'center', margin: '0 0 20px 0', color: '#1e293b', borderBottom: '2px solid #0f172a', paddingBottom: '10px' }}>
-            {res.title}
-          </h3>
+          {/* JNTUA Official Header */}
+          <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+            <img src="/logo.png" alt="JNTUA Logo" style={{ height: '75px', marginBottom: '8px' }} />
+            <h2 style={{ margin: 0, color: '#0f172a', fontSize: '1.2rem', fontWeight: 'bold' }}>
+              JAWAHARLAL NEHRU TECHNOLOGICAL UNIVERSITY ANANTAPUR
+            </h2>
+            <p style={{ margin: '4px 0 0 0', color: '#64748b', fontSize: '0.85rem', fontWeight: '600' }}>
+              ANANTHAPURAMU - 515002 (A.P.) INDIA
+            </p>
+            <h3 style={{ margin: '16px 0 0 0', color: '#1e293b', borderTop: '2px solid #0f172a', paddingTop: '12px', fontSize: '1.05rem' }}>
+              {res.title}
+            </h3>
+          </div>
 
-          {/* First Row: Roll No and Student Name */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', background: '#f8fafc', padding: '12px 16px', borderRadius: '6px', marginBottom: '20px', border: '1px solid #e2e8f0' }}>
-            <span style={{ fontSize: '1.1em', color: '#0f172a' }}>
+          {/* Roll No & Student Name Banner */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', background: '#f8fafc', padding: '12px 18px', borderRadius: '6px', marginBottom: '20px', border: '1px solid #e2e8f0' }}>
+            <span style={{ fontSize: '1.05em', color: '#0f172a' }}>
               <strong>Roll No:</strong> {res.rollNumber}
             </span>
-            <span style={{ fontSize: '1.1em', color: '#0f172a' }}>
+            <span style={{ fontSize: '1.05em', color: '#0f172a' }}>
               <strong>Student Name:</strong> {res.studentName}
             </span>
           </div>
 
-          {/* Subject Wise Results Table */}
+          {/* Subjects Table */}
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center' }}>
             <thead>
               <tr style={{ background: '#f1f5f9', color: '#334155' }}>
@@ -65,13 +74,13 @@ export default function ResultCard({ results }) {
             </tbody>
           </table>
 
-          {/* Print Action Button */}
+          {/* Print Button */}
           <div style={{ marginTop: '20px', textAlign: 'right' }}>
             <button 
               onClick={() => window.print()} 
-              style={{ padding: '8px 16px', background: '#334155', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+              style={{ padding: '10px 18px', background: '#334155', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
             >
-              🖨️ Print Result
+              🖨️ Print Result Sheet
             </button>
           </div>
         </div>
