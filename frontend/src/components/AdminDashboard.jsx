@@ -95,7 +95,8 @@ export default function AdminDashboard() {
           internalMarks: getVal(row, 'internalmarks', 'internal', 'intmarks', 'int', 'im', 'mid'),
           externalMarks: getVal(row, 'externalmarks', 'external', 'extmarks', 'ext', 'em', 'see'),
           totalMarks: getVal(row, 'totalmarks', 'total', 'tot', 'marks'),
-          result: getVal(row, 'result', 'status', 'res')
+          result: getVal(row, 'result', 'status', 'res'),
+          credits: getVal(row, 'credits', 'credit', 'cred', 'c', 'cr') // NEW
         });
       });
 
