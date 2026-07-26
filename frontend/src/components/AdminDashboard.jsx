@@ -6,14 +6,14 @@ const API_BASE_URL = 'https://results-portal-hvjj.onrender.com';
 export default function AdminDashboard() {
   const [token, setToken] = useState(localStorage.getItem('adminToken') || '');
   const [credentials, setCredentials] = useState({ username: '', password: '' });
-  const [resultsList, setResultsList] = useState([]);
+  const [summaryList, setSummaryList] = useState([]);
   const [title, setTitle] = useState('');
   const [parsedData, setParsedData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (token) fetchResults();
+    if (token) fetchSummary();
   }, [token]);
 
   const handleLogin = async (e) => {
@@ -34,17 +34,16 @@ export default function AdminDashboard() {
     }
   };
 
-  const fetchResults = async () => {
-    const res = await fetch(`${API_BASE_URL}/api/results`, {
+  const fetchSummary = async () => {
+    const res = await fetch(`${API_BASE_URL}/api/results/summary`, {
       headers: { Authorization: `Bearer ${token}` }
     });
     if (res.ok) {
       const data = await res.json();
-      setResultsList(data);
+      setSummaryList(data);
     }
   };
 
- // Ultra-flexible Excel / CSV Reader
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -57,7 +56,6 @@ export default function AdminDashboard() {
       const ws = wb.Sheets[wsname];
       const data = XLSX.utils.sheet_to_json(ws);
 
-      // Helper to strip spaces/special characters for clean comparison
       const cleanKey = (str) => String(str || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
       const getVal = (row, ...possibleKeys) => {
@@ -76,7 +74,6 @@ export default function AdminDashboard() {
         return '-';
       };
 
-      // Group rows by Roll No
       const grouped = {};
       data.forEach((row) => {
         const roll = getVal(row, 'rollno', 'rollnumber', 'roll', 'htno', 'hallticket').toUpperCase();
@@ -107,10 +104,9 @@ export default function AdminDashboard() {
     reader.readAsBinaryString(file);
   };
 
-  // Submit Title + Parsed Excel Data to Backend
   const handlePublish = async () => {
     if (!title.trim()) return alert('Please enter Examination Title!');
-    if (parsedData.length === 0) return alert('Please upload a valid Excel / CSV file first!');
+    if (parsedData.length === 0) return alert('Please upload an Excel / CSV file first!');
 
     setLoading(true);
     try {
@@ -127,7 +123,8 @@ export default function AdminDashboard() {
 
       alert(data.message);
       setParsedData([]);
-      fetchResults();
+      setTitle('');
+      fetchSummary();
     } catch (err) {
       alert(`Upload failed: ${err.message}`);
     } finally {
@@ -135,13 +132,20 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Delete this published result record?')) return;
-    await fetch(`${API_BASE_URL}/api/results/${id}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    fetchResults();
+  const handleDeleteTitle = async (examTitle) => {
+    if (!window.confirm(`Are you sure you want to delete ALL results published under "${examTitle}"?`)) return;
+    
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/results/title/${encodeURIComponent(examTitle)}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        fetchSummary();
+      }
+    } catch (err) {
+      alert('Failed to delete examination results');
+    }
   };
 
   if (!token) {
@@ -174,7 +178,7 @@ export default function AdminDashboard() {
             <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '6px' }}>Examination Title / Session:</label>
             <input 
               type="text" 
-              placeholder="e.g. B.Tech III Year I Sem Regular Examinations Nov 2025" 
+              placeholder="e.g. B.Tech II Year I Sem Supple Results Dec 2025" 
               value={title} 
               onChange={(e) => setTitle(e.target.value)} 
               style={{ width: '100%', padding: '10px', fontSize: '15px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
@@ -184,48 +188,12 @@ export default function AdminDashboard() {
           <div>
             <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '6px' }}>Upload Excel / CSV File:</label>
             <input type="file" accept=".xlsx, .xls, .csv" onChange={handleFileUpload} style={{ padding: '8px' }} />
-            {/* Live Data Preview Table */}
-          {parsedData.length > 0 && (
-            <div style={{ marginTop: '16px', background: '#f8fafc', padding: '16px', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
-              <p style={{ margin: '0 0 10px 0', color: '#16a34a', fontWeight: 'bold' }}>
-                ✓ Parsed {parsedData.length} students. Sample Preview of First Student:
-              </p>
-              
-              <div style={{ fontSize: '0.9em', marginBottom: '8px' }}>
-                <strong>Roll No:</strong> {parsedData[0].rollNumber} | <strong>Name:</strong> {parsedData[0].studentName}
-              </div>
-
-              <table style={{ width: '100%', borderCollapse: 'collapse', background: '#fff', fontSize: '0.85em' }}>
-                <thead>
-                  <tr style={{ background: '#e2e8f0' }}>
-                    <th style={{ padding: '6px', border: '1px solid #cbd5e1' }}>Code</th>
-                    <th style={{ padding: '6px', border: '1px solid #cbd5e1' }}>Subject</th>
-                    <th style={{ padding: '6px', border: '1px solid #cbd5e1' }}>Internal</th>
-                    <th style={{ padding: '6px', border: '1px solid #cbd5e1' }}>External</th>
-                    <th style={{ padding: '6px', border: '1px solid #cbd5e1' }}>Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {parsedData[0].subjects.map((s, i) => (
-                    <tr key={i} style={{ textAlign: 'center' }}>
-                      <td style={{ padding: '6px', border: '1px solid #cbd5e1' }}>{s.subjectCode}</td>
-                      <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'left' }}>{s.subjectName}</td>
-                      <td style={{ padding: '6px', border: '1px solid #cbd5e1', color: s.internalMarks === '-' ? 'red' : 'green', fontWeight: 'bold' }}>{s.internalMarks}</td>
-                      <td style={{ padding: '6px', border: '1px solid #cbd5e1', color: s.externalMarks === '-' ? 'red' : 'green', fontWeight: 'bold' }}>{s.externalMarks}</td>
-                      <td style={{ padding: '6px', border: '1px solid #cbd5e1' }}>{s.totalMarks}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
           </div>
 
-          {/* Preview Parsed Data */}
           {parsedData.length > 0 && (
             <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
               <p style={{ margin: 0, color: '#16a34a', fontWeight: 'bold' }}>
-                ✓ Successfully parsed results for {parsedData.length} students from file.
+                ✓ Parsed results for {parsedData.length} students from file.
               </p>
             </div>
           )}
@@ -240,28 +208,41 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Published Results Table */}
-      <h3>Published Results Database ({resultsList.length})</h3>
+      {/* Published Summary Table */}
+      <h3>Published Examinations ({summaryList.length})</h3>
       <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #cbd5e1', background: '#fff' }}>
         <thead>
           <tr style={{ background: '#f1f5f9', textAlign: 'left' }}>
-            <th style={{ padding: '10px', borderBottom: '1px solid #cbd5e1' }}>Roll No</th>
-            <th style={{ padding: '10px', borderBottom: '1px solid #cbd5e1' }}>Student Name</th>
-            <th style={{ padding: '10px', borderBottom: '1px solid #cbd5e1' }}>Title / Exam</th>
-            <th style={{ padding: '10px', borderBottom: '1px solid #cbd5e1' }}>Action</th>
+            <th style={{ padding: '12px 16px', borderBottom: '2px solid #cbd5e1' }}>Examination Title</th>
+            <th style={{ padding: '12px 16px', borderBottom: '2px solid #cbd5e1', textAlign: 'center', width: '180px' }}>Total Records</th>
+            <th style={{ padding: '12px 16px', borderBottom: '2px solid #cbd5e1', textAlign: 'right', width: '120px' }}>Action</th>
           </tr>
         </thead>
         <tbody>
-          {resultsList.map((item) => (
-            <tr key={item._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-              <td style={{ padding: '10px' }}><strong>{item.rollNumber}</strong></td>
-              <td style={{ padding: '10px' }}>{item.studentName}</td>
-              <td style={{ padding: '10px', fontSize: '0.9em' }}>{item.title}</td>
-              <td style={{ padding: '10px' }}>
-                <button onClick={() => handleDelete(item._id)} style={{ color: '#ef4444', cursor: 'pointer', border: 'none', background: 'transparent', fontWeight: 'bold' }}>Delete</button>
-              </td>
+          {summaryList.length === 0 ? (
+            <tr>
+              <td colSpan="3" style={{ padding: '16px', textAlign: 'center', color: '#64748b' }}>No examination results published yet.</td>
             </tr>
-          ))}
+          ) : (
+            summaryList.map((item, index) => (
+              <tr key={index} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                <td style={{ padding: '12px 16px', fontWeight: '600', color: '#0f172a' }}>{item.title}</td>
+                <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                  <span style={{ background: '#e0f2fe', color: '#0369a1', padding: '4px 10px', borderRadius: '12px', fontWeight: 'bold', fontSize: '0.88rem' }}>
+                    {item.count} Students
+                  </span>
+                </td>
+                <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                  <button 
+                    onClick={() => handleDeleteTitle(item.title)} 
+                    style={{ color: '#ef4444', cursor: 'pointer', border: 'none', background: 'transparent', fontWeight: 'bold' }}
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            ))
+          )}
         </tbody>
       </table>
     </div>
