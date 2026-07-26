@@ -184,6 +184,41 @@ export default function AdminDashboard() {
           <div>
             <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '6px' }}>Upload Excel / CSV File:</label>
             <input type="file" accept=".xlsx, .xls, .csv" onChange={handleFileUpload} style={{ padding: '8px' }} />
+            {/* Live Data Preview Table */}
+          {parsedData.length > 0 && (
+            <div style={{ marginTop: '16px', background: '#f8fafc', padding: '16px', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
+              <p style={{ margin: '0 0 10px 0', color: '#16a34a', fontWeight: 'bold' }}>
+                ✓ Parsed {parsedData.length} students. Sample Preview of First Student:
+              </p>
+              
+              <div style={{ fontSize: '0.9em', marginBottom: '8px' }}>
+                <strong>Roll No:</strong> {parsedData[0].rollNumber} | <strong>Name:</strong> {parsedData[0].studentName}
+              </div>
+
+              <table style={{ width: '100%', borderCollapse: 'collapse', background: '#fff', fontSize: '0.85em' }}>
+                <thead>
+                  <tr style={{ background: '#e2e8f0' }}>
+                    <th style={{ padding: '6px', border: '1px solid #cbd5e1' }}>Code</th>
+                    <th style={{ padding: '6px', border: '1px solid #cbd5e1' }}>Subject</th>
+                    <th style={{ padding: '6px', border: '1px solid #cbd5e1' }}>Internal</th>
+                    <th style={{ padding: '6px', border: '1px solid #cbd5e1' }}>External</th>
+                    <th style={{ padding: '6px', border: '1px solid #cbd5e1' }}>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {parsedData[0].subjects.map((s, i) => (
+                    <tr key={i} style={{ textAlign: 'center' }}>
+                      <td style={{ padding: '6px', border: '1px solid #cbd5e1' }}>{s.subjectCode}</td>
+                      <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'left' }}>{s.subjectName}</td>
+                      <td style={{ padding: '6px', border: '1px solid #cbd5e1', color: s.internalMarks === '-' ? 'red' : 'green', fontWeight: 'bold' }}>{s.internalMarks}</td>
+                      <td style={{ padding: '6px', border: '1px solid #cbd5e1', color: s.externalMarks === '-' ? 'red' : 'green', fontWeight: 'bold' }}>{s.externalMarks}</td>
+                      <td style={{ padding: '6px', border: '1px solid #cbd5e1' }}>{s.totalMarks}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
           </div>
 
           {/* Preview Parsed Data */}
