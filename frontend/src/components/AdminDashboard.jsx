@@ -13,13 +13,22 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Bulk Memo Generation States
+  // Bulk PDF State
   const [batchResults, setBatchResults] = useState([]);
   const [generatingTitle, setGeneratingTitle] = useState('');
 
   useEffect(() => {
     if (token) fetchSummary();
   }, [token]);
+
+  const convertToDigitWords = (num) => {
+    if (isNaN(num) || num === 0) return 'Zero';
+    const wordsMap = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
+    return String(num)
+      .split('')
+      .map((digit) => wordsMap[parseInt(digit)] || digit)
+      .join(' ');
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -155,7 +164,7 @@ export default function AdminDashboard() {
     }
   };
 
-  // BULK MARKS MEMO PDF DOWNLOAD FUNCTION
+  // Generate Official Marks Memo PDF Batch
   const handleDownloadAllMemos = async (examTitle) => {
     setGeneratingTitle(examTitle);
 
@@ -171,12 +180,11 @@ export default function AdminDashboard() {
 
       setBatchResults(data);
 
-      // Allow DOM to render hidden elements before compiling PDF
       setTimeout(() => {
         const element = document.getElementById('batch-memos-container');
         
         const opt = {
-          margin: [8, 8, 8, 8],
+          margin: [5, 5, 5, 5],
           filename: `JNTUA_Memos_${examTitle.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,
           image: { type: 'jpeg', quality: 0.98 },
           html2canvas: { scale: 2, useCORS: true, logging: false },
@@ -274,7 +282,7 @@ export default function AdminDashboard() {
                   disabled={generatingTitle === item.title}
                   style={{ padding: '6px 12px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.82rem' }}
                 >
-                  {generatingTitle === item.title ? 'Generating PDF...' : '📥 Download All Memos (PDF)'}
+                  {generatingTitle === item.title ? 'Generating PDF...' : '📥 Generate Memos (PDF)'}
                 </button>
                 <button 
                   onClick={() => handleDeleteTitle(item.title)} 
@@ -288,129 +296,208 @@ export default function AdminDashboard() {
         </tbody>
       </table>
 
-      {/* HIDDEN BATCH CONTAINER (RENDERED TEMPORARILY FOR PDF GENERATION) */}
+      {/* OFFICIAL JNTUA CERTIFICATE BATCH CONTAINER FOR PDF EXPORT ONLY */}
       {batchResults.length > 0 && (
         <div style={{ position: 'absolute', left: '-9999px', top: '-9999px' }}>
           <div id="batch-memos-container">
             {batchResults.map((res, bIdx) => {
-              const totalCreditsObtained = res.subjects.reduce((sum, sub) => {
-                const c = parseFloat(sub.credits);
-                return !isNaN(c) && (sub.result === 'P' || sub.result === 'PASS') ? sum + c : sum;
-              }, 0);
+              let totalInternal = 0;
+              let totalEndExam = 0;
+              let totalAggregate = 0;
+              let totalCredits = 0;
+              let registered = res.subjects.length;
+              let appeared = 0;
+              let passed = 0;
 
-              const isOverallPass = res.subjects.every(
-                (sub) => sub.result === 'P' || sub.result === 'PASS'
-              );
+              res.subjects.forEach((sub) => {
+                const internal = parseInt(sub.internalMarks) || 0;
+                const external = parseInt(sub.externalMarks) || 0;
+                const total = parseInt(sub.totalMarks) || (internal + external);
+                const credit = parseFloat(sub.credits) || 0;
+
+                totalInternal += internal;
+                totalEndExam += external;
+                totalAggregate += total;
+
+                if (sub.internalMarks !== 'AB' && sub.externalMarks !== 'AB') appeared += 1;
+                if (sub.result === 'P' || sub.result === 'PASS') {
+                  passed += 1;
+                  totalCredits += credit;
+                }
+              });
+
+              const memoNo = res.memoNo || `JA ${Math.floor(1000000 + Math.random() * 9000000)}`;
+              const serialNo = res.serialNo || `${Math.floor(10000000 + Math.random() * 90000000)}`;
 
               return (
                 <div 
                   key={bIdx}
                   style={{ 
-                    border: '2px solid #0f172a', 
-                    borderRadius: '4px', 
-                    padding: '28px', 
+                    border: '1.5px solid #000', 
+                    padding: '20px 24px', 
                     background: '#ffffff', 
-                    color: '#0f172a',
-                    fontFamily: 'serif',
+                    color: '#000',
+                    fontFamily: 'Arial, sans-serif',
                     pageBreakAfter: 'always',
                     breakAfter: 'page',
                     boxSizing: 'border-box'
                   }}
                 >
                   {/* Header */}
-                  <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                    <img src="/logo.png" alt="JNTUA Logo" style={{ height: '70px', marginBottom: '6px' }} />
-                    <h2 style={{ margin: 0, color: '#0f172a', fontSize: '1.25rem', fontWeight: 'bold', letterSpacing: '0.5px' }}>
-                      JAWAHARLAL NEHRU TECHNOLOGICAL UNIVERSITY ANANTAPUR
-                    </h2>
-                    <p style={{ margin: '2px 0 0 0', color: '#334155', fontSize: '0.82rem', fontWeight: 'bold' }}>
-                      ANANTHAPURAMU - 515002, ANDHRA PRADESH, INDIA
-                    </p>
-                    
-                    <div style={{ margin: '14px 0 10px 0', borderTop: '2px double #0f172a', borderBottom: '2px double #0f172a', padding: '6px 0' }}>
-                      <h3 style={{ margin: 0, fontSize: '1.1rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                        SEMESTER MARKS MEMORANDUM
-                      </h3>
-                      <p style={{ margin: '4px 0 0 0', fontSize: '0.95rem', fontWeight: 'bold', fontFamily: 'sans-serif' }}>
-                        {res.title}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                    <img src="/logo.png" alt="JNTUA Emblem" style={{ height: '70px', width: 'auto' }} />
+                    <div style={{ textAlign: 'center', flex: 1, padding: '0 10px' }}>
+                      <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 'bold', fontFamily: 'serif' }}>
+                        JAWAHARLAL NEHRU TECHNOLOGICAL UNIVERSITY ANANTAPUR
+                      </h2>
+                      <p style={{ margin: '2px 0 0 0', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                        ANANTHAPURAMU - 515 002, ANDHRA PRADESH, INDIA
                       </p>
+                      <h3 style={{ margin: '8px 0 0 0', fontSize: '1.1rem', fontWeight: 'bold', fontFamily: 'serif' }}>
+                        MEMORANDUM OF MARKS
+                      </h3>
+                    </div>
+                    <div style={{ textAlign: 'right', minWidth: '140px' }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>MEMO NO: </span>
+                      <span style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#dc2626' }}>{memoNo}</span>
                     </div>
                   </div>
 
-                  {/* Student Details */}
-                  <table style={{ width: '100%', marginBottom: '18px', borderCollapse: 'collapse', fontFamily: 'sans-serif', fontSize: '0.95rem' }}>
+                  {/* Student Information Table */}
+                  <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #000', fontSize: '0.8rem', marginBottom: '14px' }}>
                     <tbody>
                       <tr>
-                        <td style={{ padding: '6px 0', width: '18%', fontWeight: 'bold' }}>Hall Ticket No:</td>
-                        <td style={{ padding: '6px 0', width: '32%', fontWeight: 'bold', color: '#1e293b' }}>{res.rollNumber}</td>
-                        <td style={{ padding: '6px 0', width: '18%', fontWeight: 'bold' }}>Student Name:</td>
-                        <td style={{ padding: '6px 0', width: '32%', fontWeight: 'bold', color: '#1e293b' }}>{res.studentName}</td>
+                        <td style={{ padding: '5px 8px', borderRight: '1px solid #000', borderBottom: '1px solid #000', width: '12%', fontWeight: 'bold' }}>S.No:</td>
+                        <td style={{ padding: '5px 8px', borderRight: '1px solid #000', borderBottom: '1px solid #000', width: '38%' }}>{serialNo}</td>
+                        <td style={{ padding: '5px 8px', borderRight: '1px solid #000', borderBottom: '1px solid #000', width: '18%', fontWeight: 'bold' }}>HALL TICKET NO:</td>
+                        <td style={{ padding: '5px 8px', borderBottom: '1px solid #000', width: '32%', fontSize: '1.05rem', fontWeight: 'bold' }}>{res.rollNumber}</td>
+                      </tr>
+                      <tr>
+                        <td style={{ padding: '5px 8px', borderRight: '1px solid #000', borderBottom: '1px solid #000', fontWeight: 'bold' }}>EXAMINATION:</td>
+                        <td style={{ padding: '5px 8px', borderRight: '1px solid #000', borderBottom: '1px solid #000', fontWeight: 'bold' }}>{res.title}</td>
+                        <td style={{ padding: '5px 8px', borderRight: '1px solid #000', borderBottom: '1px solid #000', fontWeight: 'bold' }}>MONTH & YEAR OF EXAM:</td>
+                        <td style={{ padding: '5px 8px', borderBottom: '1px solid #000', fontWeight: 'bold' }}>{res.monthYear || 'DECEMBER 2025'}</td>
+                      </tr>
+                      <tr>
+                        <td style={{ padding: '5px 8px', borderRight: '1px solid #000', borderBottom: '1px solid #000', fontWeight: 'bold' }}>BRANCH:</td>
+                        <td style={{ padding: '5px 8px', borderRight: '1px solid #000', borderBottom: '1px solid #000' }}>{res.branch || 'ELECTRICAL & ELECTRONICS ENGINEERING'}</td>
+                        <td style={{ padding: '5px 8px', borderRight: '1px solid #000', borderBottom: '1px solid #000', fontWeight: 'bold' }}>INSTITUTION:</td>
+                        <td style={{ padding: '5px 8px', borderBottom: '1px solid #000' }}>{res.institution || 'PVKKIT - ALAMURU - ANANTAPUR'}</td>
+                      </tr>
+                      <tr>
+                        <td style={{ padding: '5px 8px', borderRight: '1px solid #000', fontWeight: 'bold' }}>NAME:</td>
+                        <td colSpan="3" style={{ padding: '5px 8px', fontSize: '0.9rem', fontWeight: 'bold' }}>{res.studentName}</td>
                       </tr>
                     </tbody>
                   </table>
 
-                  {/* Subjects Table */}
-                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center', fontFamily: 'sans-serif', fontSize: '0.9rem', marginBottom: '20px' }}>
+                  {/* Marks Table */}
+                  <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #000', fontSize: '0.8rem', textAlign: 'center', marginBottom: '14px' }}>
                     <thead>
-                      <tr style={{ background: '#f1f5f9', color: '#0f172a' }}>
-                        <th style={{ padding: '10px', border: '1px solid #0f172a', width: '15%' }}>Subject Code</th>
-                        <th style={{ padding: '10px', border: '1px solid #0f172a', textAlign: 'left' }}>Subject Title</th>
-                        <th style={{ padding: '10px', border: '1px solid #0f172a', width: '12%' }}>Internal</th>
-                        <th style={{ padding: '10px', border: '1px solid #0f172a', width: '12%' }}>External</th>
-                        <th style={{ padding: '10px', border: '1px solid #0f172a', width: '12%' }}>Total</th>
-                        <th style={{ padding: '10px', border: '1px solid #0f172a', width: '10%' }}>Result</th>
-                        <th style={{ padding: '10px', border: '1px solid #0f172a', width: '10%' }}>Credits</th>
+                      <tr style={{ borderBottom: '1px solid #000', fontWeight: 'bold' }}>
+                        <th style={{ padding: '6px', borderRight: '1px solid #000', width: '5%' }}>S. No.</th>
+                        <th style={{ padding: '6px', borderRight: '1px solid #000', width: '12%' }}>SUBJECT CODE</th>
+                        <th style={{ padding: '6px', borderRight: '1px solid #000', textAlign: 'left' }}>SUBJECT TITLE</th>
+                        <th style={{ padding: '6px', borderRight: '1px solid #000', width: '11%' }}>INTERNAL MARKS</th>
+                        <th style={{ padding: '6px', borderRight: '1px solid #000', width: '10%' }}>END EXAM</th>
+                        <th style={{ padding: '6px', borderRight: '1px solid #000', width: '10%' }}>TOTAL MARKS</th>
+                        <th style={{ padding: '6px', borderRight: '1px solid #000', width: '8%' }}>RESULT</th>
+                        <th style={{ padding: '6px', width: '8%' }}>CREDITS</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {res.subjects.map((sub, sIdx) => (
-                        <tr key={sIdx}>
-                          <td style={{ padding: '9px', border: '1px solid #0f172a', fontWeight: '600' }}>{sub.subjectCode}</td>
-                          <td style={{ padding: '9px', border: '1px solid #0f172a', textAlign: 'left' }}>{sub.subjectName}</td>
-                          <td style={{ padding: '9px', border: '1px solid #0f172a' }}>{sub.internalMarks}</td>
-                          <td style={{ padding: '9px', border: '1px solid #0f172a' }}>{sub.externalMarks}</td>
-                          <td style={{ padding: '9px', border: '1px solid #0f172a', fontWeight: 'bold' }}>{sub.totalMarks}</td>
-                          <td style={{ 
-                            padding: '9px', 
-                            border: '1px solid #0f172a', 
-                            fontWeight: 'bold', 
-                            color: sub.result === 'P' || sub.result === 'PASS' ? '#15803d' : '#b91c1c' 
-                          }}>
-                            {sub.result}
-                          </td>
-                          <td style={{ padding: '9px', border: '1px solid #0f172a', fontWeight: 'bold' }}>
-                            {sub.credits || '-'}
-                          </td>
+                      {res.subjects.map((sub, idx) => (
+                        <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                          <td style={{ padding: '6px', borderRight: '1px solid #000' }}>{idx + 1}</td>
+                          <td style={{ padding: '6px', borderRight: '1px solid #000', fontWeight: 'bold' }}>{sub.subjectCode}</td>
+                          <td style={{ padding: '6px', borderRight: '1px solid #000', textAlign: 'left' }}>{sub.subjectName}</td>
+                          <td style={{ padding: '6px', borderRight: '1px solid #000' }}>{sub.internalMarks}</td>
+                          <td style={{ padding: '6px', borderRight: '1px solid #000' }}>{sub.externalMarks}</td>
+                          <td style={{ padding: '6px', borderRight: '1px solid #000', fontWeight: 'bold' }}>{sub.totalMarks}</td>
+                          <td style={{ padding: '6px', borderRight: '1px solid #000', fontWeight: 'bold', color: sub.result === 'P' || sub.result === 'PASS' ? '#000' : '#dc2626' }}>{sub.result}</td>
+                          <td style={{ padding: '6px', fontWeight: 'bold' }}>{sub.credits || '-'}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
 
-                  {/* Summary Footer */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', border: '1px solid #0f172a', padding: '10px 16px', borderRadius: '4px', fontFamily: 'sans-serif', fontSize: '0.9rem', marginBottom: '35px' }}>
-                    <div>
-                      <strong>Total Credits Earned:</strong> {totalCreditsObtained}
-                    </div>
-                    <div>
-                      <strong>Overall Status: </strong>
-                      <span style={{ color: isOverallPass ? '#15803d' : '#b91c1c', fontWeight: 'bold' }}>
-                        {isOverallPass ? 'PASSED' : 'FAILED / COMPARTMENT'}
-                      </span>
-                    </div>
+                  {/* Summary Totals */}
+                  <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #000', fontSize: '0.8rem', marginBottom: '10px' }}>
+                    <tbody>
+                      <tr style={{ fontWeight: 'bold' }}>
+                        <td style={{ padding: '6px', borderRight: '1px solid #000', width: '18%' }}>SUBJECTS REGISTERED:</td>
+                        <td style={{ padding: '6px', borderRight: '1px solid #000', width: '8%', textAlign: 'center' }}>{registered}</td>
+                        <td style={{ padding: '6px', borderRight: '1px solid #000', width: '12%' }}>APPEARED:</td>
+                        <td style={{ padding: '6px', borderRight: '1px solid #000', width: '8%', textAlign: 'center' }}>{appeared}</td>
+                        <td style={{ padding: '6px', borderRight: '1px solid #000', width: '10%' }}>PASSED:</td>
+                        <td style={{ padding: '6px', borderRight: '1px solid #000', width: '8%', textAlign: 'center' }}>{passed}</td>
+                        <td style={{ padding: '6px', borderRight: '1px solid #000', width: '10%', textAlign: 'right' }}>TOTAL:</td>
+                        <td style={{ padding: '6px', borderRight: '1px solid #000', width: '7%', textAlign: 'center' }}>{totalInternal}</td>
+                        <td style={{ padding: '6px', borderRight: '1px solid #000', width: '7%', textAlign: 'center' }}>{totalEndExam}</td>
+                        <td style={{ padding: '6px', borderRight: '1px solid #000', width: '7%', textAlign: 'center' }}>{totalAggregate}</td>
+                        <td style={{ padding: '6px', width: '5%', textAlign: 'center' }}>{totalCredits}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  <div style={{ border: '1px solid #000', padding: '6px 10px', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '35px' }}>
+                    AGGREGATE (IN WORDS): &nbsp;&nbsp;&nbsp; *** {convertToDigitWords(totalAggregate)} ***
                   </div>
 
                   {/* Signatures */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '40px', paddingTop: '20px', fontFamily: 'sans-serif', fontSize: '0.85rem' }}>
-                    <div style={{ textAlign: 'center' }}>
-                      <p style={{ margin: 0, fontWeight: 'bold' }}>Verified By</p>
-                    </div>
-                    <div style={{ textAlign: 'center' }}>
-                      <p style={{ margin: 0, fontWeight: 'bold' }}>Additional Controller of Examinations</p>
-                    </div>
-                    <div style={{ textAlign: 'center' }}>
-                      <p style={{ margin: 0, fontWeight: 'bold' }}>Controller of Examinations</p>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '15px', padding: '0 10px' }}>
+                    <div>DATE: &nbsp;&nbsp; {res.date || 'Saturday, Mar 26 2016'}</div>
+                    <div>VERIFIED BY</div>
+                    <div style={{ textAlign: 'center' }}>CONTROLLER OF EXAMINATIONS</div>
+                  </div>
+
+                  {/* Instructions */}
+                  <div style={{ borderTop: '1px solid #000', paddingTop: '8px', fontSize: '0.7rem' }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>INSTRUCTIONS:</div>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center', marginBottom: '6px' }}>
+                      <thead>
+                        <tr style={{ fontWeight: 'bold' }}>
+                          <th style={{ textAlign: 'left', width: '35%' }}></th>
+                          <th colSpan="3" style={{ borderBottom: '1px solid #000' }}>MAXIMUM MARKS</th>
+                          <th colSpan="2" style={{ borderBottom: '1px solid #000' }}>MINIMUM FOR PASS</th>
+                        </tr>
+                        <tr style={{ fontSize: '0.68rem' }}>
+                          <th style={{ textAlign: 'left' }}></th>
+                          <th>Internal</th>
+                          <th>End Exam</th>
+                          <th>Total of Int. & End</th>
+                          <th>End Exam</th>
+                          <th>Total of Int. & End</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td style={{ textAlign: 'left', fontWeight: 'bold' }}>THEORY / DRAWING / DESIGN SUBJECTS</td>
+                          <td>30</td>
+                          <td>70</td>
+                          <td>100</td>
+                          <td>25</td>
+                          <td>40</td>
+                        </tr>
+                        <tr>
+                          <td style={{ textAlign: 'left', fontWeight: 'bold' }}>PRACTICAL SUBJECTS</td>
+                          <td>25</td>
+                          <td>50</td>
+                          <td>75</td>
+                          <td>18</td>
+                          <td>30</td>
+                        </tr>
+                      </tbody>
+                    </table>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', marginTop: '6px', fontSize: '0.7rem' }}>
+                      <span>P : PASS</span>
+                      <span>F : FAIL</span>
+                      <span>AB : ABSENT</span>
+                      <span>MP : MALPRACTICE</span>
                     </div>
                   </div>
+
                 </div>
               );
             })}
