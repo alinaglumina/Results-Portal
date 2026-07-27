@@ -319,7 +319,7 @@ export default function AdminDashboard() {
         </tbody>
       </table>
 
-     {/* A3 PRINT CONTAINER FOR PDF GENERATION */}
+      {/* A3 PRINT CONTAINER FOR PDF GENERATION */}
       {batchResults.length > 0 && (
         <div style={{ position: 'absolute', left: '-9999px', top: '-9999px' }}>
           <div id="batch-memos-container" style={{ width: '280mm' }}>
@@ -359,7 +359,7 @@ export default function AdminDashboard() {
                   className={!isLast ? "page-break" : ""}
                   style={{ 
                     width: '280mm',
-                    height: '395mm', // Fixed height prevents overflow empty pages
+                    height: '395mm',
                     maxHeight: '395mm',
                     border: borderStyle,
                     padding: '20px 25px', 
@@ -495,3 +495,6 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
