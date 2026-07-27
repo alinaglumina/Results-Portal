@@ -13,6 +13,9 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Pre-printed Stationery Toggle
+  const [dataOnlyMode, setDataOnlyMode] = useState(true);
+
   // Bulk PDF State
   const [batchResults, setBatchResults] = useState([]);
   const [generatingTitle, setGeneratingTitle] = useState('');
@@ -21,8 +24,9 @@ export default function AdminDashboard() {
     if (token) fetchSummary();
   }, [token]);
 
+  // Convert aggregate total to digit-by-digit words
   const convertToDigitWords = (num) => {
-    if (isNaN(num) || num === 0) return 'Zero';
+    if (isNaN(num) || num === null || num === undefined) return 'Zero';
     const wordsMap = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
     return String(num)
       .split('')
@@ -164,7 +168,7 @@ export default function AdminDashboard() {
     }
   };
 
-  // Generate Official Marks Memo PDF Batch
+  // Generate A3 PDF Memos
   const handleDownloadAllMemos = async (examTitle) => {
     setGeneratingTitle(examTitle);
 
@@ -183,12 +187,13 @@ export default function AdminDashboard() {
       setTimeout(() => {
         const element = document.getElementById('batch-memos-container');
         
+        // Exact A3 Portrait PDF Configuration
         const opt = {
-          margin: [5, 5, 5, 5],
-          filename: `JNTUA_Memos_${examTitle.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,
+          margin: [10, 10, 10, 10],
+          filename: `JNTUA_A3_Memos_${examTitle.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,
           image: { type: 'jpeg', quality: 0.98 },
           html2canvas: { scale: 2, useCORS: true, logging: false },
-          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+          jsPDF: { unit: 'mm', format: 'a3', orientation: 'portrait' },
           pagebreak: { mode: ['css', 'legacy'] }
         };
 
@@ -226,6 +231,25 @@ export default function AdminDashboard() {
         <button onClick={() => { localStorage.removeItem('adminToken'); setToken(''); }} style={{ padding: '8px 16px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Logout</button>
       </div>
 
+      {/* Mode Selector Option */}
+      <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #cbd5e1', marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div>
+          <strong>Print Mode for A3 Memos:</strong>
+          <p style={{ margin: '2px 0 0 0', fontSize: '0.85rem', color: '#64748b' }}>
+            Choose "Data-Only Overprint" if you are feeding blank pre-printed university stationery sheets into the printer.
+          </p>
+        </div>
+        <label style={{ cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <input 
+            type="checkbox" 
+            checked={dataOnlyMode} 
+            onChange={(e) => setDataOnlyMode(e.target.checked)} 
+            style={{ width: '18px', height: '18px' }}
+          />
+          Data-Only Overprint (For Pre-printed A3 Sheets)
+        </label>
+      </div>
+
       {/* Upload Section */}
       <div style={{ padding: '24px', border: '1px solid #cbd5e1', borderRadius: '8px', background: '#ffffff', marginBottom: '30px' }}>
         <h3>Publish / Update Examination Results</h3>
@@ -235,7 +259,7 @@ export default function AdminDashboard() {
             <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '6px' }}>Examination Title / Session:</label>
             <input 
               type="text" 
-              placeholder="e.g. B.Tech II Year I Sem Supple Results Dec 2025" 
+              placeholder="e.g. B.Tech IV Year I Sem Regular Examinations Dec 2015" 
               value={title} 
               onChange={(e) => setTitle(e.target.value)} 
               style={{ width: '100%', padding: '10px', fontSize: '15px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
@@ -282,7 +306,7 @@ export default function AdminDashboard() {
                   disabled={generatingTitle === item.title}
                   style={{ padding: '6px 12px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.82rem' }}
                 >
-                  {generatingTitle === item.title ? 'Generating PDF...' : '📥 Generate Memos (PDF)'}
+                  {generatingTitle === item.title ? 'Generating A3 PDF...' : '📥 Generate A3 Memos (PDF)'}
                 </button>
                 <button 
                   onClick={() => handleDeleteTitle(item.title)} 
@@ -296,10 +320,10 @@ export default function AdminDashboard() {
         </tbody>
       </table>
 
-      {/* OFFICIAL JNTUA CERTIFICATE BATCH CONTAINER FOR PDF EXPORT ONLY */}
+      {/* A3 PRINT CONTAINER FOR PDF GENERATION */}
       {batchResults.length > 0 && (
         <div style={{ position: 'absolute', left: '-9999px', top: '-9999px' }}>
-          <div id="batch-memos-container">
+          <div id="batch-memos-container" style={{ width: '277mm' }}>
             {batchResults.map((res, bIdx) => {
               let totalInternal = 0;
               let totalEndExam = 0;
@@ -326,15 +350,18 @@ export default function AdminDashboard() {
                 }
               });
 
-              const memoNo = res.memoNo || `JA ${Math.floor(1000000 + Math.random() * 9000000)}`;
-              const serialNo = res.serialNo || `${Math.floor(10000000 + Math.random() * 90000000)}`;
+              // Visually hide borders & static labels if Data-Only mode is enabled
+              const borderStyle = dataOnlyMode ? '1px solid transparent' : '1px solid #000';
+              const hideLabelStyle = dataOnlyMode ? { visibility: 'hidden' } : {};
 
               return (
                 <div 
                   key={bIdx}
                   style={{ 
-                    border: '1.5px solid #000', 
-                    padding: '20px 24px', 
+                    width: '277mm',
+                    minHeight: '400mm',
+                    border: borderStyle,
+                    padding: '25px 30px', 
                     background: '#ffffff', 
                     color: '#000',
                     fontFamily: 'Arial, sans-serif',
@@ -343,158 +370,120 @@ export default function AdminDashboard() {
                     boxSizing: 'border-box'
                   }}
                 >
-                  {/* Header */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-                    <img src="/logo.png" alt="JNTUA Emblem" style={{ height: '70px', width: 'auto' }} />
-                    <div style={{ textAlign: 'center', flex: 1, padding: '0 10px' }}>
-                      <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 'bold', fontFamily: 'serif' }}>
+                  {/* Header Block */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '25px', height: '80px' }}>
+                    <div style={{ width: '80px', visibility: dataOnlyMode ? 'hidden' : 'visible' }}>
+                      <img src="/logo.png" alt="Logo" style={{ height: '70px' }} />
+                    </div>
+                    
+                    <div style={{ textAlign: 'center', flex: 1, ...hideLabelStyle }}>
+                      <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 'bold', fontFamily: 'serif' }}>
                         JAWAHARLAL NEHRU TECHNOLOGICAL UNIVERSITY ANANTAPUR
                       </h2>
-                      <p style={{ margin: '2px 0 0 0', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                      <p style={{ margin: '2px 0 0 0', fontSize: '0.9rem', fontWeight: 'bold' }}>
                         ANANTHAPURAMU - 515 002, ANDHRA PRADESH, INDIA
                       </p>
-                      <h3 style={{ margin: '8px 0 0 0', fontSize: '1.1rem', fontWeight: 'bold', fontFamily: 'serif' }}>
+                      <h3 style={{ margin: '10px 0 0 0', fontSize: '1.2rem', fontWeight: 'bold', fontFamily: 'serif' }}>
                         MEMORANDUM OF MARKS
                       </h3>
                     </div>
-                    <div style={{ textAlign: 'right', minWidth: '140px' }}>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>MEMO NO: </span>
-                      <span style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#dc2626' }}>{memoNo}</span>
+
+                    <div style={{ textAlign: 'right', minWidth: '150px' }}>
+                      <span style={{ fontSize: '0.9rem', fontWeight: 'bold', ...hideLabelStyle }}>MEMO NO: </span>
+                      <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: dataOnlyMode ? '#000' : '#dc2626' }}>
+                        {res.memoNo || ''}
+                      </span>
                     </div>
                   </div>
 
-                  {/* Student Information Table */}
-                  <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #000', fontSize: '0.8rem', marginBottom: '14px' }}>
+                  {/* Student Details Grid */}
+                  <table style={{ width: '100%', borderCollapse: 'collapse', border: borderStyle, fontSize: '0.95rem', marginBottom: '20px' }}>
                     <tbody>
-                      <tr>
-                        <td style={{ padding: '5px 8px', borderRight: '1px solid #000', borderBottom: '1px solid #000', width: '12%', fontWeight: 'bold' }}>S.No:</td>
-                        <td style={{ padding: '5px 8px', borderRight: '1px solid #000', borderBottom: '1px solid #000', width: '38%' }}>{serialNo}</td>
-                        <td style={{ padding: '5px 8px', borderRight: '1px solid #000', borderBottom: '1px solid #000', width: '18%', fontWeight: 'bold' }}>HALL TICKET NO:</td>
-                        <td style={{ padding: '5px 8px', borderBottom: '1px solid #000', width: '32%', fontSize: '1.05rem', fontWeight: 'bold' }}>{res.rollNumber}</td>
+                      <tr style={{ height: '28px' }}>
+                        <td style={{ padding: '6px', borderRight: borderStyle, borderBottom: borderStyle, width: '12%', fontWeight: 'bold', ...hideLabelStyle }}>S.No:</td>
+                        <td style={{ padding: '6px', borderRight: borderStyle, borderBottom: borderStyle, width: '38%' }}>{res.serialNo || ''}</td>
+                        <td style={{ padding: '6px', borderRight: borderStyle, borderBottom: borderStyle, width: '18%', fontWeight: 'bold', ...hideLabelStyle }}>HALL TICKET NO:</td>
+                        <td style={{ padding: '6px', borderBottom: borderStyle, width: '32%', fontSize: '1.15rem', fontWeight: 'bold' }}>{res.rollNumber}</td>
                       </tr>
-                      <tr>
-                        <td style={{ padding: '5px 8px', borderRight: '1px solid #000', borderBottom: '1px solid #000', fontWeight: 'bold' }}>EXAMINATION:</td>
-                        <td style={{ padding: '5px 8px', borderRight: '1px solid #000', borderBottom: '1px solid #000', fontWeight: 'bold' }}>{res.title}</td>
-                        <td style={{ padding: '5px 8px', borderRight: '1px solid #000', borderBottom: '1px solid #000', fontWeight: 'bold' }}>MONTH & YEAR OF EXAM:</td>
-                        <td style={{ padding: '5px 8px', borderBottom: '1px solid #000', fontWeight: 'bold' }}>{res.monthYear || 'DECEMBER 2025'}</td>
+                      <tr style={{ height: '28px' }}>
+                        <td style={{ padding: '6px', borderRight: borderStyle, borderBottom: borderStyle, fontWeight: 'bold', ...hideLabelStyle }}>EXAMINATION:</td>
+                        <td style={{ padding: '6px', borderRight: borderStyle, borderBottom: borderStyle, fontWeight: 'bold' }}>{res.title}</td>
+                        <td style={{ padding: '6px', borderRight: borderStyle, borderBottom: borderStyle, fontWeight: 'bold', ...hideLabelStyle }}>MONTH & YEAR OF EXAM:</td>
+                        <td style={{ padding: '6px', borderBottom: borderStyle, fontWeight: 'bold' }}>{res.monthYear || 'DECEMBER 2025'}</td>
                       </tr>
-                      <tr>
-                        <td style={{ padding: '5px 8px', borderRight: '1px solid #000', borderBottom: '1px solid #000', fontWeight: 'bold' }}>BRANCH:</td>
-                        <td style={{ padding: '5px 8px', borderRight: '1px solid #000', borderBottom: '1px solid #000' }}>{res.branch || 'ELECTRICAL & ELECTRONICS ENGINEERING'}</td>
-                        <td style={{ padding: '5px 8px', borderRight: '1px solid #000', borderBottom: '1px solid #000', fontWeight: 'bold' }}>INSTITUTION:</td>
-                        <td style={{ padding: '5px 8px', borderBottom: '1px solid #000' }}>{res.institution || 'PVKKIT - ALAMURU - ANANTAPUR'}</td>
+                      <tr style={{ height: '28px' }}>
+                        <td style={{ padding: '6px', borderRight: borderStyle, borderBottom: borderStyle, fontWeight: 'bold', ...hideLabelStyle }}>BRANCH:</td>
+                        <td style={{ padding: '6px', borderRight: borderStyle, borderBottom: borderStyle }}>{res.branch || ''}</td>
+                        <td style={{ padding: '6px', borderRight: borderStyle, borderBottom: borderStyle, fontWeight: 'bold', ...hideLabelStyle }}>INSTITUTION:</td>
+                        <td style={{ padding: '6px', borderBottom: borderStyle }}>{res.institution || ''}</td>
                       </tr>
-                      <tr>
-                        <td style={{ padding: '5px 8px', borderRight: '1px solid #000', fontWeight: 'bold' }}>NAME:</td>
-                        <td colSpan="3" style={{ padding: '5px 8px', fontSize: '0.9rem', fontWeight: 'bold' }}>{res.studentName}</td>
+                      <tr style={{ height: '28px' }}>
+                        <td style={{ padding: '6px', borderRight: borderStyle, fontWeight: 'bold', ...hideLabelStyle }}>NAME:</td>
+                        <td colSpan="3" style={{ padding: '6px', fontSize: '1rem', fontWeight: 'bold' }}>{res.studentName}</td>
                       </tr>
                     </tbody>
                   </table>
 
                   {/* Marks Table */}
-                  <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #000', fontSize: '0.8rem', textAlign: 'center', marginBottom: '14px' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', border: borderStyle, fontSize: '0.95rem', textAlign: 'center', marginBottom: '20px' }}>
                     <thead>
-                      <tr style={{ borderBottom: '1px solid #000', fontWeight: 'bold' }}>
-                        <th style={{ padding: '6px', borderRight: '1px solid #000', width: '5%' }}>S. No.</th>
-                        <th style={{ padding: '6px', borderRight: '1px solid #000', width: '12%' }}>SUBJECT CODE</th>
-                        <th style={{ padding: '6px', borderRight: '1px solid #000', textAlign: 'left' }}>SUBJECT TITLE</th>
-                        <th style={{ padding: '6px', borderRight: '1px solid #000', width: '11%' }}>INTERNAL MARKS</th>
-                        <th style={{ padding: '6px', borderRight: '1px solid #000', width: '10%' }}>END EXAM</th>
-                        <th style={{ padding: '6px', borderRight: '1px solid #000', width: '10%' }}>TOTAL MARKS</th>
-                        <th style={{ padding: '6px', borderRight: '1px solid #000', width: '8%' }}>RESULT</th>
-                        <th style={{ padding: '6px', width: '8%' }}>CREDITS</th>
+                      <tr style={{ borderBottom: borderStyle, fontWeight: 'bold', height: '32px', ...hideLabelStyle }}>
+                        <th style={{ padding: '8px', borderRight: borderStyle, width: '5%' }}>S. No.</th>
+                        <th style={{ padding: '8px', borderRight: borderStyle, width: '14%' }}>SUBJECT CODE</th>
+                        <th style={{ padding: '8px', borderRight: borderStyle, textAlign: 'left' }}>SUBJECT TITLE</th>
+                        <th style={{ padding: '8px', borderRight: borderStyle, width: '12%' }}>INTERNAL MARKS</th>
+                        <th style={{ padding: '8px', borderRight: borderStyle, width: '10%' }}>END EXAM</th>
+                        <th style={{ padding: '8px', borderRight: borderStyle, width: '10%' }}>TOTAL MARKS</th>
+                        <th style={{ padding: '8px', borderRight: borderStyle, width: '8%' }}>RESULT</th>
+                        <th style={{ padding: '8px', width: '8%' }}>CREDITS</th>
                       </tr>
                     </thead>
                     <tbody>
                       {res.subjects.map((sub, idx) => (
-                        <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                          <td style={{ padding: '6px', borderRight: '1px solid #000' }}>{idx + 1}</td>
-                          <td style={{ padding: '6px', borderRight: '1px solid #000', fontWeight: 'bold' }}>{sub.subjectCode}</td>
-                          <td style={{ padding: '6px', borderRight: '1px solid #000', textAlign: 'left' }}>{sub.subjectName}</td>
-                          <td style={{ padding: '6px', borderRight: '1px solid #000' }}>{sub.internalMarks}</td>
-                          <td style={{ padding: '6px', borderRight: '1px solid #000' }}>{sub.externalMarks}</td>
-                          <td style={{ padding: '6px', borderRight: '1px solid #000', fontWeight: 'bold' }}>{sub.totalMarks}</td>
-                          <td style={{ padding: '6px', borderRight: '1px solid #000', fontWeight: 'bold', color: sub.result === 'P' || sub.result === 'PASS' ? '#000' : '#dc2626' }}>{sub.result}</td>
+                        <tr key={idx} style={{ height: '28px' }}>
+                          <td style={{ padding: '6px', borderRight: borderStyle }}>{idx + 1}</td>
+                          <td style={{ padding: '6px', borderRight: borderStyle, fontWeight: 'bold' }}>{sub.subjectCode}</td>
+                          <td style={{ padding: '6px', borderRight: borderStyle, textAlign: 'left' }}>{sub.subjectName}</td>
+                          <td style={{ padding: '6px', borderRight: borderStyle }}>{sub.internalMarks}</td>
+                          <td style={{ padding: '6px', borderRight: borderStyle }}>{sub.externalMarks}</td>
+                          <td style={{ padding: '6px', borderRight: borderStyle, fontWeight: 'bold' }}>{sub.totalMarks}</td>
+                          <td style={{ padding: '6px', borderRight: borderStyle, fontWeight: 'bold' }}>{sub.result}</td>
                           <td style={{ padding: '6px', fontWeight: 'bold' }}>{sub.credits || '-'}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
 
-                  {/* Summary Totals */}
-                  <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #000', fontSize: '0.8rem', marginBottom: '10px' }}>
+                  {/* Dynamic Totals Row */}
+                  <table style={{ width: '100%', borderCollapse: 'collapse', border: borderStyle, fontSize: '0.95rem', marginBottom: '16px' }}>
                     <tbody>
-                      <tr style={{ fontWeight: 'bold' }}>
-                        <td style={{ padding: '6px', borderRight: '1px solid #000', width: '18%' }}>SUBJECTS REGISTERED:</td>
-                        <td style={{ padding: '6px', borderRight: '1px solid #000', width: '8%', textAlign: 'center' }}>{registered}</td>
-                        <td style={{ padding: '6px', borderRight: '1px solid #000', width: '12%' }}>APPEARED:</td>
-                        <td style={{ padding: '6px', borderRight: '1px solid #000', width: '8%', textAlign: 'center' }}>{appeared}</td>
-                        <td style={{ padding: '6px', borderRight: '1px solid #000', width: '10%' }}>PASSED:</td>
-                        <td style={{ padding: '6px', borderRight: '1px solid #000', width: '8%', textAlign: 'center' }}>{passed}</td>
-                        <td style={{ padding: '6px', borderRight: '1px solid #000', width: '10%', textAlign: 'right' }}>TOTAL:</td>
-                        <td style={{ padding: '6px', borderRight: '1px solid #000', width: '7%', textAlign: 'center' }}>{totalInternal}</td>
-                        <td style={{ padding: '6px', borderRight: '1px solid #000', width: '7%', textAlign: 'center' }}>{totalEndExam}</td>
-                        <td style={{ padding: '6px', borderRight: '1px solid #000', width: '7%', textAlign: 'center' }}>{totalAggregate}</td>
+                      <tr style={{ fontWeight: 'bold', height: '30px' }}>
+                        <td style={{ padding: '6px', borderRight: borderStyle, width: '18%', ...hideLabelStyle }}>SUBJECTS REGISTERED:</td>
+                        <td style={{ padding: '6px', borderRight: borderStyle, width: '8%', textAlign: 'center' }}>{registered}</td>
+                        <td style={{ padding: '6px', borderRight: borderStyle, width: '12%', ...hideLabelStyle }}>APPEARED:</td>
+                        <td style={{ padding: '6px', borderRight: borderStyle, width: '8%', textAlign: 'center' }}>{appeared}</td>
+                        <td style={{ padding: '6px', borderRight: borderStyle, width: '10%', ...hideLabelStyle }}>PASSED:</td>
+                        <td style={{ padding: '6px', borderRight: borderStyle, width: '8%', textAlign: 'center' }}>{passed}</td>
+                        <td style={{ padding: '6px', borderRight: borderStyle, width: '10%', textAlign: 'right', ...hideLabelStyle }}>TOTAL:</td>
+                        <td style={{ padding: '6px', borderRight: borderStyle, width: '7%', textAlign: 'center' }}>{totalInternal}</td>
+                        <td style={{ padding: '6px', borderRight: borderStyle, width: '7%', textAlign: 'center' }}>{totalEndExam}</td>
+                        <td style={{ padding: '6px', borderRight: borderStyle, width: '7%', textAlign: 'center' }}>{totalAggregate}</td>
                         <td style={{ padding: '6px', width: '5%', textAlign: 'center' }}>{totalCredits}</td>
                       </tr>
                     </tbody>
                   </table>
 
-                  <div style={{ border: '1px solid #000', padding: '6px 10px', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '35px' }}>
-                    AGGREGATE (IN WORDS): &nbsp;&nbsp;&nbsp; *** {convertToDigitWords(totalAggregate)} ***
+                  {/* Aggregate in Words */}
+                  <div style={{ border: borderStyle, padding: '8px 12px', fontSize: '0.95rem', fontWeight: 'bold', marginBottom: '50px' }}>
+                    <span style={hideLabelStyle}>AGGREGATE (IN WORDS): &nbsp;&nbsp;&nbsp;</span>
+                    *** {convertToDigitWords(totalAggregate)} ***
                   </div>
 
-                  {/* Signatures */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '15px', padding: '0 10px' }}>
-                    <div>DATE: &nbsp;&nbsp; {res.date || 'Saturday, Mar 26 2016'}</div>
-                    <div>VERIFIED BY</div>
-                    <div style={{ textAlign: 'center' }}>CONTROLLER OF EXAMINATIONS</div>
-                  </div>
-
-                  {/* Instructions */}
-                  <div style={{ borderTop: '1px solid #000', paddingTop: '8px', fontSize: '0.7rem' }}>
-                    <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>INSTRUCTIONS:</div>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center', marginBottom: '6px' }}>
-                      <thead>
-                        <tr style={{ fontWeight: 'bold' }}>
-                          <th style={{ textAlign: 'left', width: '35%' }}></th>
-                          <th colSpan="3" style={{ borderBottom: '1px solid #000' }}>MAXIMUM MARKS</th>
-                          <th colSpan="2" style={{ borderBottom: '1px solid #000' }}>MINIMUM FOR PASS</th>
-                        </tr>
-                        <tr style={{ fontSize: '0.68rem' }}>
-                          <th style={{ textAlign: 'left' }}></th>
-                          <th>Internal</th>
-                          <th>End Exam</th>
-                          <th>Total of Int. & End</th>
-                          <th>End Exam</th>
-                          <th>Total of Int. & End</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr>
-                          <td style={{ textAlign: 'left', fontWeight: 'bold' }}>THEORY / DRAWING / DESIGN SUBJECTS</td>
-                          <td>30</td>
-                          <td>70</td>
-                          <td>100</td>
-                          <td>25</td>
-                          <td>40</td>
-                        </tr>
-                        <tr>
-                          <td style={{ textAlign: 'left', fontWeight: 'bold' }}>PRACTICAL SUBJECTS</td>
-                          <td>25</td>
-                          <td>50</td>
-                          <td>75</td>
-                          <td>18</td>
-                          <td>30</td>
-                        </tr>
-                      </tbody>
-                    </table>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', marginTop: '6px', fontSize: '0.7rem' }}>
-                      <span>P : PASS</span>
-                      <span>F : FAIL</span>
-                      <span>AB : ABSENT</span>
-                      <span>MP : MALPRACTICE</span>
+                  {/* Date Output */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', fontSize: '0.9rem', fontWeight: 'bold' }}>
+                    <div>
+                      <span style={hideLabelStyle}>DATE: &nbsp;&nbsp;</span>
+                      {res.date || 'Saturday, Mar 26 2016'}
                     </div>
                   </div>
 
