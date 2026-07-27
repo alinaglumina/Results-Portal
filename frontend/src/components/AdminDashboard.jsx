@@ -187,14 +187,13 @@ export default function AdminDashboard() {
       setTimeout(() => {
         const element = document.getElementById('batch-memos-container');
         
-        // Exact A3 Portrait PDF Configuration
         const opt = {
-          margin: [10, 10, 10, 10],
+          margin: [8, 8, 8, 8],
           filename: `JNTUA_A3_Memos_${examTitle.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,
           image: { type: 'jpeg', quality: 0.98 },
           html2canvas: { scale: 2, useCORS: true, logging: false },
           jsPDF: { unit: 'mm', format: 'a3', orientation: 'portrait' },
-          pagebreak: { mode: ['css', 'legacy'] }
+          pagebreak: { mode: 'css', before: '.page-break' }
         };
 
         html2pdf().set(opt).from(element).save().then(() => {
@@ -320,10 +319,10 @@ export default function AdminDashboard() {
         </tbody>
       </table>
 
-      {/* A3 PRINT CONTAINER FOR PDF GENERATION */}
+     {/* A3 PRINT CONTAINER FOR PDF GENERATION */}
       {batchResults.length > 0 && (
         <div style={{ position: 'absolute', left: '-9999px', top: '-9999px' }}>
-          <div id="batch-memos-container" style={{ width: '277mm' }}>
+          <div id="batch-memos-container" style={{ width: '280mm' }}>
             {batchResults.map((res, bIdx) => {
               let totalInternal = 0;
               let totalEndExam = 0;
@@ -350,24 +349,27 @@ export default function AdminDashboard() {
                 }
               });
 
-              // Visually hide borders & static labels if Data-Only mode is enabled
               const borderStyle = dataOnlyMode ? '1px solid transparent' : '1px solid #000';
               const hideLabelStyle = dataOnlyMode ? { visibility: 'hidden' } : {};
+              const isLast = bIdx === batchResults.length - 1;
 
               return (
                 <div 
                   key={bIdx}
+                  className={!isLast ? "page-break" : ""}
                   style={{ 
-                    width: '277mm',
-                    minHeight: '400mm',
+                    width: '280mm',
+                    height: '395mm', // Fixed height prevents overflow empty pages
+                    maxHeight: '395mm',
                     border: borderStyle,
-                    padding: '25px 30px', 
+                    padding: '20px 25px', 
                     background: '#ffffff', 
                     color: '#000',
                     fontFamily: 'Arial, sans-serif',
-                    pageBreakAfter: 'always',
-                    breakAfter: 'page',
-                    boxSizing: 'border-box'
+                    pageBreakAfter: isLast ? 'avoid' : 'always',
+                    breakAfter: isLast ? 'avoid' : 'page',
+                    boxSizing: 'border-box',
+                    overflow: 'hidden'
                   }}
                 >
                   {/* Header Block */}
@@ -493,6 +495,3 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
-    </div>
-  );
-}
